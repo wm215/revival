@@ -1,0 +1,190 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0A0A0A">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Revival">
+  <title>Revival</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
+  <link rel="stylesheet" href="styles.css">
+  <script>
+    // Dev cache-bust: when loaded with ?dev=..., re-inject style+script with that token
+    (function() {
+      const m = location.search.match(/[?&]dev=([^&]+)/);
+      if (!m) return;
+      const v = m[1];
+      const link = document.querySelector('link[href="styles.css"]');
+      if (link) link.href = 'styles.css?v=' + v;
+      // Replace the deferred app.js load with a cache-busted one
+      window.__REVIVAL_BUST__ = v;
+    })();
+  </script>
+</head>
+<body>
+  <main id="app">
+
+    <section id="view-today" class="view" data-view="today" aria-labelledby="today-title">
+      <header class="view-header" id="today-header">
+        <div class="today-eyebrow-row">
+          <p class="eyebrow" id="today-eyebrow"></p>
+          <span class="sync-indicator" id="sync-indicator" data-state="ok" role="status" aria-live="polite" aria-atomic="true">
+            <span class="sync-dot" aria-hidden="true"></span>
+            <span class="sync-text">Synced</span>
+          </span>
+        </div>
+        <h1 id="today-title"></h1>
+      </header>
+      <section class="briefing-card" id="briefing-card" aria-labelledby="briefing-eyebrow"></section>
+      <p class="progression-counter" id="progression-counter" aria-live="polite"></p>
+      <div class="deload-banner" id="deload-banner" role="status" hidden>
+        <span class="deload-banner-title">Week 7 · Deload</span>
+        <span class="deload-banner-sub">Cut volume. No grinding. Progression locked.</span>
+      </div>
+      <div class="view-body" id="today-body"></div>
+    </section>
+
+    <section id="view-weight" class="view" data-view="weight" aria-labelledby="weight-title" hidden>
+      <header class="view-header">
+        <p class="eyebrow" id="weight-eyebrow">Today</p>
+        <h1 id="weight-title">Weight</h1>
+      </header>
+      <div class="view-body">
+        <div class="card weight-entry-card">
+          <label class="weight-entry-label" for="weight-input">Today's weight</label>
+          <div class="weight-entry-row">
+            <input
+              id="weight-input"
+              class="weight-entry-input"
+              type="number"
+              inputmode="decimal"
+              step="0.1"
+              min="50"
+              max="500"
+              placeholder="—"
+              aria-label="Today's weight in pounds">
+            <span class="weight-entry-unit" aria-hidden="true">lbs</span>
+            <button id="weight-save" class="weight-entry-save" type="button">Save</button>
+          </div>
+          <p class="weight-entry-meta" id="weight-entry-meta"></p>
+        </div>
+
+        <div class="card weight-progress-card">
+          <div class="progress-grid">
+            <div class="progress-cell">
+              <p class="progress-label">Goal</p>
+              <p class="progress-value" id="progress-goal">—</p>
+              <p class="progress-sub" id="progress-goal-sub"></p>
+            </div>
+            <div class="progress-cell">
+              <p class="progress-label">Days left</p>
+              <p class="progress-value" id="progress-days">—</p>
+              <p class="progress-sub" id="progress-days-sub"></p>
+            </div>
+            <div class="progress-cell">
+              <p class="progress-label">Required</p>
+              <p class="progress-value" id="progress-required">—</p>
+              <p class="progress-sub">lbs / wk</p>
+            </div>
+            <div class="progress-cell">
+              <p class="progress-label">Actual (14d)</p>
+              <p class="progress-value" id="progress-actual">—</p>
+              <p class="progress-sub">lbs / wk</p>
+            </div>
+          </div>
+          <div class="status-row" id="status-row">
+            <span class="status-dot" aria-hidden="true"></span>
+            <span class="status-label" id="status-label">—</span>
+          </div>
+        </div>
+
+        <div class="card weight-chart-card">
+          <p class="chart-title">Last 30 days</p>
+          <div class="chart-wrap" id="chart-wrap"></div>
+          <div class="chart-legend">
+            <span class="legend-item"><span class="legend-swatch legend-swatch-line"></span>Weight</span>
+            <span class="legend-item"><span class="legend-swatch legend-swatch-goal"></span>Goal 170 lbs</span>
+          </div>
+        </div>
+
+        <div class="card weight-streak-card">
+          <p class="progress-label">Workout streak</p>
+          <p class="streak-value" id="streak-value">—</p>
+          <p class="progress-sub">last 7 days</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="view-settings" class="view" data-view="settings" aria-labelledby="settings-title" hidden>
+      <header class="view-header">
+        <p class="eyebrow">Configuration</p>
+        <h1 id="settings-title">Settings</h1>
+      </header>
+      <div class="view-body" id="settings-body"></div>
+    </section>
+
+  </main>
+
+  <div id="rest-timer" class="rest-timer" role="dialog" aria-label="Rest timer" hidden>
+    <button id="rest-timer-btn" class="rest-timer-btn" type="button" aria-label="Dismiss rest timer">
+      <svg class="rest-ring" viewBox="0 0 100 100" aria-hidden="true" focusable="false">
+        <circle class="rest-ring-track" cx="50" cy="50" r="46" fill="none" stroke-width="3"/>
+        <circle class="rest-ring-fill"  cx="50" cy="50" r="46" fill="none" stroke-width="3"
+                stroke-linecap="round" transform="rotate(-90 50 50)"/>
+      </svg>
+      <div class="rest-time">
+        <span class="rest-mmss" id="rest-mmss" aria-hidden="true">0:00</span>
+        <span class="rest-label" id="rest-label">Rest</span>
+        <span class="rest-tap-hint">Tap to dismiss</span>
+      </div>
+    </button>
+    <span class="sr-only" id="rest-status" role="status" aria-live="polite" aria-atomic="true"></span>
+  </div>
+
+  <div id="onboarding" class="onboarding" role="dialog" aria-labelledby="ob-title" aria-modal="true" hidden>
+    <div class="ob-shell">
+      <p class="ob-brand">REVIVAL</p>
+      <div class="ob-step-content" id="ob-content"></div>
+      <div class="ob-footer">
+        <div class="ob-dots" id="ob-dots" aria-hidden="true"></div>
+        <div class="ob-actions" id="ob-actions"></div>
+      </div>
+    </div>
+  </div>
+
+  <nav class="tabbar" role="tablist" aria-label="Primary">
+    <button class="tab is-active" type="button" role="tab" aria-selected="true" aria-controls="view-today" data-target="today">
+      <svg class="tab-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+        <path d="M4 11.5 12 5l8 6.5V19a1 1 0 0 1-1 1h-4v-6h-6v6H5a1 1 0 0 1-1-1z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
+      </svg>
+      <span class="tab-label">Today</span>
+    </button>
+    <button class="tab" type="button" role="tab" aria-selected="false" aria-controls="view-weight" data-target="weight">
+      <svg class="tab-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+        <path d="M4 18 9 13l3.5 3.5L20 9" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M14 9h6v6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      <span class="tab-label">Weight</span>
+    </button>
+    <button class="tab" type="button" role="tab" aria-selected="false" aria-controls="view-settings" data-target="settings">
+      <svg class="tab-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+        <circle cx="12" cy="12" r="3" fill="none" stroke="currentColor" stroke-width="1.6"/>
+        <path d="M19.4 14.6a7.7 7.7 0 0 0 0-5.2l1.7-1.3-2-3.4-2 .8a7.7 7.7 0 0 0-4.5-2.6L12 1h-4l-.6 2.9A7.7 7.7 0 0 0 2.9 6.5l-2-.8-2 3.4 1.7 1.3a7.7 7.7 0 0 0 0 5.2l-1.7 1.3 2 3.4 2-.8a7.7 7.7 0 0 0 4.5 2.6L8 23h4l.6-2.9a7.7 7.7 0 0 0 4.5-2.6l2 .8 2-3.4z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" transform="translate(2 0)"/>
+      </svg>
+      <span class="tab-label">Settings</span>
+    </button>
+  </nav>
+
+  <script>
+    (function() {
+      const v = window.__REVIVAL_BUST__;
+      const s = document.createElement('script');
+      s.src = v ? ('app.js?v=' + v) : 'app.js';
+      document.body.appendChild(s);
+    })();
+  </script>
+</body>
+</html>
