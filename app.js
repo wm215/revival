@@ -57,6 +57,70 @@
   window.__revival = { queueWrite, pendingCount };
 
   // ---------------------------------------------------------------------------
+  // Exercise catalog — pattern-keyed swap candidates. SPEC § 3 movement patterns.
+  // bucket: 'pink' (compound 8-10) | 'orange' (isolation 12-15).
+  // ---------------------------------------------------------------------------
+  const EXERCISE_CATALOG = [
+    // QUAD-DOMINANT
+    { id: 'hack-squat',      name: 'Hack Squat',           pattern: 'quad', bucket: 'pink' },
+    { id: 'back-squat',      name: 'Back Squat',           pattern: 'quad', bucket: 'pink' },
+    { id: 'front-squat',     name: 'Front Squat',          pattern: 'quad', bucket: 'pink' },
+    { id: 'leg-press',       name: 'Leg Press',            pattern: 'quad', bucket: 'pink' },
+    { id: 'bulgarian-ss',    name: 'Bulgarian Split Squat',pattern: 'quad', bucket: 'pink' },
+    { id: 'leg-extension',   name: 'Leg Extension',        pattern: 'quad', bucket: 'orange' },
+
+    // HIP HINGE
+    { id: 'rdl-bb',          name: 'Romanian Deadlift (BB)',pattern: 'hinge', bucket: 'pink' },
+    { id: 'rdl-db',          name: 'Romanian Deadlift (DB)',pattern: 'hinge', bucket: 'pink' },
+    { id: 'conv-deadlift',   name: 'Conventional Deadlift', pattern: 'hinge', bucket: 'pink' },
+    { id: 'good-morning',    name: 'Good Morning',          pattern: 'hinge', bucket: 'pink' },
+    { id: 'seated-leg-curl', name: 'Seated Leg Curl',       pattern: 'hinge', bucket: 'orange' },
+    { id: 'lying-leg-curl',  name: 'Lying Leg Curl',        pattern: 'hinge', bucket: 'orange' },
+
+    // HORIZONTAL PUSH
+    { id: 'bench-bb',        name: 'Bench Press (BB)',      pattern: 'horiz_push', bucket: 'pink' },
+    { id: 'bench-db',        name: 'Bench Press (DB)',      pattern: 'horiz_push', bucket: 'pink' },
+    { id: 'incline-db',      name: 'Incline DB Press',      pattern: 'horiz_push', bucket: 'pink' },
+    { id: 'machine-press',   name: 'Machine Chest Press',   pattern: 'horiz_push', bucket: 'pink' },
+    { id: 'pec-deck',        name: 'Pec Deck',              pattern: 'horiz_push', bucket: 'orange' },
+    { id: 'cable-fly',       name: 'Cable Fly',             pattern: 'horiz_push', bucket: 'orange' },
+
+    // VERTICAL PUSH
+    { id: 'ohp-bb',          name: 'Overhead Press (BB)',   pattern: 'vert_push', bucket: 'pink' },
+    { id: 'ohp-db',          name: 'Overhead Press (DB)',   pattern: 'vert_push', bucket: 'pink' },
+    { id: 'machine-shoulder',name: 'Machine Shoulder Press',pattern: 'vert_push', bucket: 'pink' },
+    { id: 'lateral-raise',   name: 'Lateral Raise',         pattern: 'vert_push', bucket: 'orange' },
+    { id: 'cable-lat-raise', name: 'Cable Lateral Raise',   pattern: 'vert_push', bucket: 'orange' },
+
+    // HORIZONTAL PULL
+    { id: 'cable-row',       name: 'Cable Row',             pattern: 'horiz_pull', bucket: 'pink' },
+    { id: 'bb-row',          name: 'Barbell Row',           pattern: 'horiz_pull', bucket: 'pink' },
+    { id: 'chest-supp-row',  name: 'Chest-Supported Row',   pattern: 'horiz_pull', bucket: 'pink' },
+    { id: 'db-row',          name: 'DB Row',                pattern: 'horiz_pull', bucket: 'pink' },
+    { id: 'face-pull',       name: 'Face Pull',             pattern: 'horiz_pull', bucket: 'orange' },
+    { id: 'rear-delt-fly',   name: 'Rear Delt Fly',         pattern: 'horiz_pull', bucket: 'orange' },
+
+    // VERTICAL PULL
+    { id: 'lat-pulldown',    name: 'Lat Pulldown',          pattern: 'vert_pull', bucket: 'pink' },
+    { id: 'pull-up',         name: 'Pull-Up',               pattern: 'vert_pull', bucket: 'pink' },
+    { id: 'chin-up',         name: 'Chin-Up',               pattern: 'vert_pull', bucket: 'pink' },
+    { id: 'neutral-pulldown',name: 'Neutral-Grip Pulldown', pattern: 'vert_pull', bucket: 'pink' },
+
+    // ISOLATION
+    { id: 'standing-calf-raise', name: 'Standing Calf Raise',pattern: 'iso_calf',    bucket: 'orange' },
+    { id: 'seated-calf-raise',   name: 'Seated Calf Raise',  pattern: 'iso_calf',    bucket: 'orange' },
+    { id: 'hanging-leg-raise',   name: 'Hanging Leg Raise',  pattern: 'iso_core',    bucket: 'orange' },
+    { id: 'cable-crunch',        name: 'Cable Crunch',       pattern: 'iso_core',    bucket: 'orange' },
+    { id: 'plank',               name: 'Plank',              pattern: 'iso_core',    bucket: 'orange' },
+    { id: 'bicep-curl',          name: 'Bicep Curl (DB)',    pattern: 'iso_bicep',   bucket: 'orange' },
+    { id: 'hammer-curl',         name: 'Hammer Curl',        pattern: 'iso_bicep',   bucket: 'orange' },
+    { id: 'preacher-curl',       name: 'Preacher Curl',      pattern: 'iso_bicep',   bucket: 'orange' },
+    { id: 'tricep-pushdown',     name: 'Tricep Pushdown',    pattern: 'iso_tricep',  bucket: 'orange' },
+    { id: 'overhead-tricep',     name: 'Overhead Tricep Ext',pattern: 'iso_tricep',  bucket: 'orange' },
+    { id: 'skull-crusher',       name: 'Skull Crusher',      pattern: 'iso_tricep',  bucket: 'orange' }
+  ];
+
+  // ---------------------------------------------------------------------------
   // Mock workout data (Tuesday — Lower A, Block 1 Week 1, return-from-layoff)
   // Buckets snapped to SPEC § 3 (pink 8-10 compound, orange 12-15 isolation).
   // Block_UL_4d sheet has stale 10-12 prescriptions — flagged separately.
@@ -68,6 +132,7 @@
       {
         id: 'hack-squat',
         name: 'Hack Squat',
+        pattern: 'quad',
         bucket: 'pink',
         sets: 3,
         repsLow: 8,
@@ -78,6 +143,7 @@
       {
         id: 'rdl-db',
         name: 'Romanian Deadlift (DB)',
+        pattern: 'hinge',
         bucket: 'pink',
         sets: 3,
         repsLow: 8,
@@ -88,6 +154,7 @@
       {
         id: 'leg-press',
         name: 'Leg Press',
+        pattern: 'quad',
         bucket: 'pink',
         sets: 3,
         repsLow: 8,
@@ -98,6 +165,7 @@
       {
         id: 'seated-leg-curl',
         name: 'Seated Leg Curl',
+        pattern: 'hinge',
         bucket: 'orange',
         sets: 3,
         repsLow: 12,
@@ -108,6 +176,7 @@
       {
         id: 'standing-calf-raise',
         name: 'Standing Calf Raise',
+        pattern: 'iso_calf',
         bucket: 'orange',
         sets: 3,
         repsLow: 12,
@@ -118,6 +187,7 @@
       {
         id: 'hanging-leg-raise',
         name: 'Hanging Leg Raise',
+        pattern: 'iso_core',
         bucket: 'orange',
         sets: 3,
         repsLow: 12,
@@ -151,6 +221,38 @@
   };
   // Mock streak state (real source TBD — workout completions in last 7 days)
   const STREAK = { done: 4, total: 4 };
+
+  // ---------------------------------------------------------------------------
+  // Swap overrides — slot id → catalog id. Persists in localStorage.
+  // The slot id (TODAY_WORKOUT.exercises[i].id) stays stable; only name /
+  // bucket / pattern / last get replaced when an override is applied.
+  // ---------------------------------------------------------------------------
+  const SWAP_OVERRIDES_KEY = 'revival.swapOverrides.v1';
+
+  function loadSwapOverrides() {
+    try { return JSON.parse(localStorage.getItem(SWAP_OVERRIDES_KEY) || '{}'); }
+    catch (e) { return {}; }
+  }
+
+  function saveSwapOverride(originalId, newExercise) {
+    const o = loadSwapOverrides();
+    o[originalId] = newExercise.id;
+    try { localStorage.setItem(SWAP_OVERRIDES_KEY, JSON.stringify(o)); } catch (e) {}
+  }
+
+  const PATTERN_LABELS = {
+    quad:        'Quad-dominant',
+    hinge:       'Hip hinge',
+    horiz_push:  'Horizontal push',
+    vert_push:   'Vertical push',
+    horiz_pull:  'Horizontal pull',
+    vert_pull:   'Vertical pull',
+    iso_calf:    'Calf isolation',
+    iso_core:    'Core isolation',
+    iso_bicep:   'Bicep isolation',
+    iso_tricep:  'Tricep isolation'
+  };
+  function readablePattern(p) { return PATTERN_LABELS[p] || p; }
 
   function generateMockWeightLog(today, days) {
     const log = [];
@@ -344,6 +446,10 @@
       'aria-label': 'Swap exercise',
       html: ICONS.swap
     });
+    swapBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      openSwapSheet(ex);
+    });
 
     const header = el('header', { class: 'exercise-header' }, [headerInfo, swapBtn]);
     body.appendChild(header);
@@ -391,6 +497,125 @@
       if (card) renderVerdict(card, ex);
     });
     renderCounter();
+  }
+
+  // ---------------------------------------------------------------------------
+  // Swap sheet — bottom-sheet picker for pattern-filtered exercise alternatives
+  // ---------------------------------------------------------------------------
+  let swapSheetOpen = false;
+  let swapSheetTrigger = null;
+
+  function openSwapSheet(ex) {
+    if (swapSheetOpen) return;
+    swapSheetOpen = true;
+    swapSheetTrigger = document.activeElement;
+
+    const candidates = EXERCISE_CATALOG
+      .filter(c => c.pattern === ex.pattern && c.id !== ex.id);
+
+    const backdrop = el('div', { class: 'swap-backdrop', 'aria-hidden': 'true' });
+    const sheet = el('div', {
+      class: 'swap-sheet',
+      role: 'dialog',
+      'aria-modal': 'true',
+      'aria-labelledby': 'swap-title'
+    });
+
+    sheet.appendChild(el('h2', { class: 'swap-title', id: 'swap-title',
+      text: 'Swap ' + ex.name }));
+    sheet.appendChild(el('p', { class: 'swap-sub',
+      text: 'Same pattern: ' + readablePattern(ex.pattern) }));
+
+    const list = el('div', { class: 'swap-list', role: 'listbox' });
+    if (candidates.length === 0) {
+      list.appendChild(el('p', { class: 'swap-empty',
+        text: 'No alternatives for this pattern.' }));
+    } else {
+      candidates.forEach(c => {
+        const row = el('button', {
+          class: 'swap-row',
+          type: 'button',
+          role: 'option',
+          'data-swap-id': c.id,
+          text: c.name
+        });
+        row.addEventListener('click', () => {
+          saveSwapOverride(ex.id, c);
+          // Slot id is stable but the exercise filling it changed:
+          // clear in-memory verdict state so a fresh prescription starts.
+          setState.delete(ex.id);
+          Array.from(savedSig.keys())
+            .filter(k => k.indexOf(ex.id + ':') === 0)
+            .forEach(k => savedSig.delete(k));
+          closeSwapSheet({ skipFocusRestore: true });
+          renderTodayForSplit();
+        });
+        list.appendChild(row);
+      });
+    }
+    sheet.appendChild(list);
+
+    const cancel = el('button', { class: 'swap-cancel', type: 'button', text: 'Cancel' });
+    cancel.addEventListener('click', () => closeSwapSheet());
+    sheet.appendChild(cancel);
+
+    backdrop.addEventListener('click', () => closeSwapSheet());
+
+    document.body.appendChild(backdrop);
+    document.body.appendChild(sheet);
+
+    document.getElementById('app').inert = true;
+    document.addEventListener('keydown', swapSheetKeydown);
+
+    requestAnimationFrame(() => {
+      backdrop.classList.add('is-open');
+      sheet.classList.add('is-open');
+      const firstRow = sheet.querySelector('.swap-row') || cancel;
+      firstRow.focus();
+    });
+  }
+
+  function closeSwapSheet(opts) {
+    if (!swapSheetOpen) return;
+    swapSheetOpen = false;
+    document.removeEventListener('keydown', swapSheetKeydown);
+    const sheet    = document.querySelector('.swap-sheet');
+    const backdrop = document.querySelector('.swap-backdrop');
+    if (sheet)    sheet.classList.remove('is-open');
+    if (backdrop) backdrop.classList.remove('is-open');
+    setTimeout(() => {
+      if (sheet)    sheet.remove();
+      if (backdrop) backdrop.remove();
+    }, 220);
+    document.getElementById('app').inert = false;
+    if (!(opts && opts.skipFocusRestore) &&
+        swapSheetTrigger && document.contains(swapSheetTrigger)) {
+      swapSheetTrigger.focus();
+    }
+    swapSheetTrigger = null;
+  }
+
+  function swapSheetKeydown(e) {
+    if (e.key === 'Escape') {
+      e.preventDefault();
+      closeSwapSheet();
+      return;
+    }
+    if (e.key !== 'Tab') return;
+    const sheet = document.querySelector('.swap-sheet');
+    if (!sheet) return;
+    const focusable = sheet.querySelectorAll('button:not([disabled])');
+    if (!focusable.length) return;
+    const first = focusable[0];
+    const last  = focusable[focusable.length - 1];
+    const active = document.activeElement;
+    if (e.shiftKey && (active === first || !sheet.contains(active))) {
+      e.preventDefault();
+      last.focus();
+    } else if (!e.shiftKey && (active === last || !sheet.contains(active))) {
+      e.preventDefault();
+      first.focus();
+    }
   }
 
   // ---------------------------------------------------------------------------
@@ -502,7 +727,8 @@
   }
 
   function exerciseById(id) {
-    return TODAY_WORKOUT.exercises.find(e => e.id === id);
+    const w = getActiveWorkout();
+    return w ? w.exercises.find(e => e.id === id) : undefined;
   }
 
   function computeVerdict(ex) {
@@ -541,8 +767,10 @@
       return;
     }
     counter.hidden = false;
-    const total = TODAY_WORKOUT.exercises.length;
-    const top = TODAY_WORKOUT.exercises.reduce((n, ex) =>
+    const w = getActiveWorkout();
+    const exs = w ? w.exercises : [];
+    const total = exs.length;
+    const top = exs.reduce((n, ex) =>
       n + (computeVerdict(ex).kind === 'green' ? 1 : 0), 0);
     counter.innerHTML = '<strong>' + top + '</strong> of ' + total + ' hitting top';
     counter.dataset.zero = top === 0 ? 'true' : 'false';
@@ -956,10 +1184,31 @@
   // Active split routing — renders Today based on SETTINGS.activeSplit
   // For non-UL splits we show a stub until step that wires Sheet workouts.
   // ---------------------------------------------------------------------------
+  function withSwapOverrides(workout) {
+    if (!workout) return workout;
+    const overrides = loadSwapOverrides();
+    if (!overrides || Object.keys(overrides).length === 0) return workout;
+    const exercises = workout.exercises.map(ex => {
+      const newId = overrides[ex.id];
+      if (!newId || newId === ex.id) return ex;
+      const sub = EXERCISE_CATALOG.find(c => c.id === newId);
+      if (!sub) return ex;
+      return Object.assign({}, ex, {
+        name:    sub.name,
+        bucket:  sub.bucket,
+        pattern: sub.pattern,
+        last:    null    // priors don't transfer to a different exercise
+      });
+    });
+    return Object.assign({}, workout, { exercises: exercises });
+  }
+
   function workoutForActiveSplit() {
-    if (SETTINGS.activeSplit === 'UL 4d') return TODAY_WORKOUT;
+    if (SETTINGS.activeSplit === 'UL 4d') return withSwapOverrides(TODAY_WORKOUT);
     return null; // PPL 6d / Original 6d not mocked yet
   }
+
+  function getActiveWorkout() { return workoutForActiveSplit() || null; }
 
   function renderTodayForSplit() {
     const w = workoutForActiveSplit();
