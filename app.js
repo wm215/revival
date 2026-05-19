@@ -1,12 +1,13 @@
-// Revival — bootstrap. Steps 1-3: tab routing, Today view from mock data,
-// per-set save-on-blur with IndexedDB write queue (offline-first stub).
-// Live Apps Script POSTs and progression verdicts land in later steps.
+// Revival — bootstrap. Tab routing, Today view, per-set save-on-blur with
+// IndexedDB write queue + live flush to Apps Script Web App (offline-first).
+// Day-of-week routing for UL 4d split. PPL 6d / Original 6d not yet wired.
 
 (function () {
   'use strict';
 
   // ---------------------------------------------------------------------------
-  // IndexedDB write queue (stub — flush to Apps Script lands in a later step)
+  // IndexedDB write queue. queueWrite() persists locally and schedules a flush;
+  // flushQueue() (defined later in this IIFE) drains the queue to Apps Script.
   // ---------------------------------------------------------------------------
   const DB_NAME = 'revival';
   const DB_VER  = 1;
@@ -37,7 +38,12 @@
       return new Promise((resolve, reject) => {
         const tx = db.transaction(STORE, 'readwrite');
         const req = tx.objectStore(STORE).add({ action, payload, ts: Date.now() });
-        req.onsuccess = () => resolve(req.result);
+        req.onsuccess = () => {
+          resolve(req.result);
+          // Trigger flush on next tick — write must commit first, and flushQueue
+          // is defined later in the IIFE so we wait for hoisting to settle.
+          setTimeout(() => { if (typeof flushQueue === 'function') flushQueue(); }, 0);
+        };
         req.onerror   = () => reject(req.error);
       });
     });
@@ -1796,8 +1802,89 @@
   };
 
   // ---------------------------------------------------------------------------
-  // Sync indicator — pulls pendingCount() from IndexedDB. Refreshes on save +
-  // periodically. Real flush logic lives in a later step.
+  // Live sync — flushes the IndexedDB write queue to the Apps Script Web App.
+  // POST uses Content-Type: text/plain to keep it a CORS-simple request (no
+  // preflight). Mode 'no-cors' means we cannot read the response body, but the
+  // POST is still delivered and executed server-side; on resolution we assume
+  // success and delete the row. On network rejection we keep the row for retry.
+  // Trade-off: a 4xx/5xx at Apps Script would not be visible client-side.
+  // Mitigation: idempotency-by-content + manual Sheet sanity check.
+  // ---------------------------------------------------------------------------
+  let isFlushing = false;
+
+  function postToAppsScript(action, payload) {
+    const body = JSON.stringify(Object.assign({ action: action }, payload));
+    return fetch(SETTINGS.appsScriptUrl, {
+      method: 'POST',
+      mode: 'no-cors',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: body
+    });
+  }
+
+  function readAllPending() {
+    return dbReady.then(db => {
+      if (!db) return [];
+      return new Promise((resolve) => {
+        const out = [];
+        const req = db.transaction(STORE, 'readonly').objectStore(STORE).openCursor();
+        req.onsuccess = (e) => {
+          const cur = e.target.result;
+          if (cur) { out.push({ key: cur.key, value: cur.value }); cur.continue(); }
+          else resolve(out);
+        };
+        req.onerror = () => resolve(out);
+      });
+    });
+  }
+
+  function deletePending(key) {
+    return dbReady.then(db => {
+      if (!db) return;
+      return new Promise((resolve) => {
+        const req = db.transaction(STORE, 'readwrite').objectStore(STORE).delete(key);
+        req.onsuccess = () => resolve();
+        req.onerror   = () => resolve();
+      });
+    });
+  }
+
+  function flushQueue() {
+    if (isFlushing) return Promise.resolve({ skipped: true });
+    if (typeof navigator !== 'undefined' && navigator.onLine === false) {
+      return Promise.resolve({ offline: true });
+    }
+    isFlushing = true;
+    return readAllPending().then(items => {
+      items.sort((a, b) => a.key - b.key);   // preserve original write order
+      let chain = Promise.resolve();
+      let sent = 0;
+      let failed = 0;
+      items.forEach(item => {
+        chain = chain.then(() =>
+          postToAppsScript(item.value.action, item.value.payload)
+            .then(() => deletePending(item.key).then(() => { sent++; }))
+            .catch(err => {
+              failed++;
+              console.warn('[revival] flush failed for key', item.key, err);
+            })
+        );
+      });
+      return chain.then(() => ({ sent: sent, failed: failed, total: items.length }));
+    }).then(result => {
+      isFlushing = false;
+      updateSyncIndicator();
+      if (result.total > 0) console.log('[revival] flush complete', result);
+      return result;
+    }).catch(err => {
+      isFlushing = false;
+      console.error('[revival] flush crashed', err);
+      return { error: String(err) };
+    });
+  }
+
+  // ---------------------------------------------------------------------------
+  // Sync indicator — reads pendingCount() from IndexedDB and updates badge UI.
   // ---------------------------------------------------------------------------
   function updateSyncIndicator() {
     const node = document.getElementById('sync-indicator');
@@ -1809,7 +1896,18 @@
       if (txt) txt.textContent = n === 0 ? 'Synced' : (n + ' pending');
     });
   }
+
+  // Expose flush + post for dev tools / manual recovery
+  window.__revival.flushQueue       = flushQueue;
+  window.__revival.postToAppsScript = postToAppsScript;
+  window.__revival.readAllPending   = readAllPending;
+
+  // Auto-flush triggers: on reconnect, every 30s while open, on every save,
+  // and once shortly after boot to drain whatever's been sitting offline.
+  window.addEventListener('online', () => flushQueue());
+  setInterval(flushQueue, 30000);
   setInterval(updateSyncIndicator, 15000);
+  setTimeout(flushQueue, 1500);
 
   // ---------------------------------------------------------------------------
   // Tab router
