@@ -117,92 +117,92 @@
     { id: 'preacher-curl',       name: 'Preacher Curl',      pattern: 'iso_bicep',   bucket: 'orange' },
     { id: 'tricep-pushdown',     name: 'Tricep Pushdown',    pattern: 'iso_tricep',  bucket: 'orange' },
     { id: 'overhead-tricep',     name: 'Overhead Tricep Ext',pattern: 'iso_tricep',  bucket: 'orange' },
-    { id: 'skull-crusher',       name: 'Skull Crusher',      pattern: 'iso_tricep',  bucket: 'orange' }
+    { id: 'skull-crusher',       name: 'Skull Crusher',      pattern: 'iso_tricep',  bucket: 'orange' },
+    { id: 'trap-bar-dl',         name: 'Trap Bar Deadlift',  pattern: 'hinge',       bucket: 'pink' }
   ];
 
   // ---------------------------------------------------------------------------
-  // Mock workout data (Tuesday — Lower A, Block 1 Week 1, return-from-layoff)
-  // Buckets snapped to SPEC § 3 (pink 8-10 compound, orange 12-15 isolation).
-  // Block_UL_4d sheet has stale 10-12 prescriptions — flagged separately.
+  // UL 4d workouts — sourced from Block_UL_4d sheet in Revival_Tracker_v3.xlsx,
+  // post-2026-05-19 cleanup. All reps comply with SPEC § 3 two-bucket rule:
+  //   pink   = compound, 3 × 8-10
+  //   orange = isolation, 3 × 12-15
   // ---------------------------------------------------------------------------
-  const TODAY_WORKOUT = {
+  const WORKOUT_UPPER_A = {
+    day: 'Monday',
+    workoutName: 'Upper A',
+    exercises: [
+      { id: 'bench-db',          name: 'Flat DB Bench Press',          pattern: 'horiz_push', bucket: 'pink',   sets: 3, repsLow: 8,  repsHigh: 10, rir: 4, last: null },
+      { id: 'chest-supp-row',    name: 'Chest-Supported Row (DB)',     pattern: 'horiz_pull', bucket: 'pink',   sets: 3, repsLow: 8,  repsHigh: 10, rir: 4, last: null },
+      { id: 'incline-db',        name: 'Incline DB Press',             pattern: 'horiz_push', bucket: 'pink',   sets: 3, repsLow: 8,  repsHigh: 10, rir: 4, last: null },
+      { id: 'neutral-pulldown',  name: 'Lat Pulldown (neutral grip)',  pattern: 'vert_pull',  bucket: 'pink',   sets: 3, repsLow: 8,  repsHigh: 10, rir: 4, last: null },
+      { id: 'lateral-raise',     name: 'DB Lateral Raise',             pattern: 'vert_push',  bucket: 'orange', sets: 3, repsLow: 12, repsHigh: 15, rir: 4, last: null },
+      { id: 'tricep-pushdown',   name: 'Cable Pressdown',              pattern: 'iso_tricep', bucket: 'orange', sets: 3, repsLow: 12, repsHigh: 15, rir: 4, last: null },
+      { id: 'bicep-curl',        name: 'DB Incline Curl',              pattern: 'iso_bicep',  bucket: 'orange', sets: 3, repsLow: 12, repsHigh: 15, rir: 4, last: null }
+    ]
+  };
+
+  const WORKOUT_LOWER_A = {
     day: 'Tuesday',
     workoutName: 'Lower A',
     exercises: [
-      {
-        id: 'hack-squat',
-        name: 'Hack Squat',
-        pattern: 'quad',
-        bucket: 'pink',
-        sets: 3,
-        repsLow: 8,
-        repsHigh: 10,
-        rir: 4,
-        last: { load: 225, reps: [9, 8, 8], unit: 'lb' }
-      },
-      {
-        id: 'rdl-db',
-        name: 'Romanian Deadlift (DB)',
-        pattern: 'hinge',
-        bucket: 'pink',
-        sets: 3,
-        repsLow: 8,
-        repsHigh: 10,
-        rir: 4,
-        last: { load: 80, reps: [10, 9, 8], unit: 'lb' }
-      },
-      {
-        id: 'leg-press',
-        name: 'Leg Press',
-        pattern: 'quad',
-        bucket: 'pink',
-        sets: 3,
-        repsLow: 8,
-        repsHigh: 10,
-        rir: 4,
-        last: { load: 270, reps: [9, 8, 8], unit: 'lb' }
-      },
-      {
-        id: 'seated-leg-curl',
-        name: 'Seated Leg Curl',
-        pattern: 'hinge',
-        bucket: 'orange',
-        sets: 3,
-        repsLow: 12,
-        repsHigh: 15,
-        rir: 4,
-        last: { load: 95, reps: [13, 12, 12], unit: 'lb' }
-      },
-      {
-        id: 'standing-calf-raise',
-        name: 'Standing Calf Raise',
-        pattern: 'iso_calf',
-        bucket: 'orange',
-        sets: 3,
-        repsLow: 12,
-        repsHigh: 15,
-        rir: 4,
-        last: { load: 180, reps: [15, 13, 12], unit: 'lb' }
-      },
-      {
-        id: 'hanging-leg-raise',
-        name: 'Hanging Leg Raise',
-        pattern: 'iso_core',
-        bucket: 'orange',
-        sets: 3,
-        repsLow: 12,
-        repsHigh: 15,
-        rir: 4,
-        last: { load: 'BW', reps: [12, 11, 10], unit: '' }
-      }
+      { id: 'hack-squat',          name: 'Hack Squat',             pattern: 'quad',     bucket: 'pink',   sets: 3, repsLow: 8,  repsHigh: 10, rir: 4, last: { load: 225, reps: [9, 8, 8], unit: 'lb' } },
+      { id: 'rdl-db',              name: 'Romanian Deadlift (DB)', pattern: 'hinge',    bucket: 'pink',   sets: 3, repsLow: 8,  repsHigh: 10, rir: 4, last: { load: 80,  reps: [10, 9, 8], unit: 'lb' } },
+      { id: 'leg-press',           name: 'Leg Press',              pattern: 'quad',     bucket: 'pink',   sets: 3, repsLow: 8,  repsHigh: 10, rir: 4, last: { load: 270, reps: [9, 8, 8], unit: 'lb' } },
+      { id: 'seated-leg-curl',     name: 'Seated Leg Curl',        pattern: 'hinge',    bucket: 'orange', sets: 3, repsLow: 12, repsHigh: 15, rir: 4, last: { load: 95,  reps: [13, 12, 12], unit: 'lb' } },
+      { id: 'standing-calf-raise', name: 'Standing Calf Raise',    pattern: 'iso_calf', bucket: 'orange', sets: 3, repsLow: 12, repsHigh: 15, rir: 4, last: { load: 180, reps: [15, 13, 12], unit: 'lb' } },
+      { id: 'hanging-leg-raise',   name: 'Hanging Leg Raise',      pattern: 'iso_core', bucket: 'orange', sets: 3, repsLow: 12, repsHigh: 15, rir: 4, last: { load: 'BW', reps: [12, 11, 10], unit: '' } }
     ]
   };
+
+  const WORKOUT_UPPER_B = {
+    day: 'Thursday',
+    workoutName: 'Upper B',
+    exercises: [
+      { id: 'ohp-db',          name: 'Seated DB Shoulder Press',      pattern: 'vert_push',  bucket: 'pink',   sets: 3, repsLow: 8,  repsHigh: 10, rir: 4, last: null },
+      { id: 'cable-row',       name: 'Cable Row (wide grip)',         pattern: 'horiz_pull', bucket: 'pink',   sets: 3, repsLow: 8,  repsHigh: 10, rir: 4, last: null },
+      { id: 'incline-db-b',    name: 'Incline DB Press',              pattern: 'horiz_push', bucket: 'pink',   sets: 3, repsLow: 8,  repsHigh: 10, rir: 4, last: null },
+      { id: 'pull-up',         name: 'Pull-up (assisted if needed)',  pattern: 'vert_pull',  bucket: 'pink',   sets: 3, repsLow: 8,  repsHigh: 10, rir: 4, last: null },
+      { id: 'cable-lat-raise', name: 'Cable Lateral Raise',           pattern: 'vert_push',  bucket: 'orange', sets: 3, repsLow: 12, repsHigh: 15, rir: 4, last: null },
+      { id: 'overhead-tricep', name: 'Overhead Cable Triceps Ext',    pattern: 'iso_tricep', bucket: 'orange', sets: 3, repsLow: 12, repsHigh: 15, rir: 4, last: null },
+      { id: 'hammer-curl',     name: 'Hammer Curl (DB)',              pattern: 'iso_bicep',  bucket: 'orange', sets: 3, repsLow: 12, repsHigh: 15, rir: 4, last: null }
+    ]
+  };
+
+  const WORKOUT_LOWER_B = {
+    day: 'Friday',
+    workoutName: 'Lower B',
+    exercises: [
+      { id: 'trap-bar-dl',      name: 'Trap Bar Deadlift',           pattern: 'hinge',    bucket: 'pink',   sets: 3, repsLow: 8,  repsHigh: 10, rir: 4, last: null },
+      { id: 'bulgarian-ss',     name: 'Bulgarian Split Squat (DB)',  pattern: 'quad',     bucket: 'pink',   sets: 3, repsLow: 8,  repsHigh: 10, rir: 4, last: null },
+      { id: 'lying-leg-curl',   name: 'Lying Leg Curl',              pattern: 'hinge',    bucket: 'orange', sets: 3, repsLow: 12, repsHigh: 15, rir: 4, last: null },
+      { id: 'leg-extension',    name: 'Leg Extension',               pattern: 'quad',     bucket: 'orange', sets: 3, repsLow: 12, repsHigh: 15, rir: 4, last: null },
+      { id: 'seated-calf-raise',name: 'Seated Calf Raise',           pattern: 'iso_calf', bucket: 'orange', sets: 3, repsLow: 12, repsHigh: 15, rir: 4, last: null },
+      { id: 'cable-crunch',     name: 'Cable Crunch',                pattern: 'iso_core', bucket: 'orange', sets: 3, repsLow: 12, repsHigh: 15, rir: 4, last: null }
+    ]
+  };
+
+  // SPEC § 4: UL 4d schedule is Mon Upper A | Tue Lower A | Wed Off | Thu Upper B | Fri Lower B | Sat-Sun Off.
+  // JS Date.getDay() returns 0=Sun, 1=Mon, ..., 6=Sat.
+  const DAY_NAMES = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+  const UL_4D_BY_DOW = { 1: WORKOUT_UPPER_A, 2: WORKOUT_LOWER_A, 4: WORKOUT_UPPER_B, 5: WORKOUT_LOWER_B };
+
+  function todaysULWorkout() {
+    const dow = new Date().getDay();
+    const dayName = DAY_NAMES[dow];
+    const w = UL_4D_BY_DOW[dow];
+    if (w) return Object.assign({}, w, { day: dayName });
+    return { day: dayName, workoutName: 'Rest day', exercises: [] };
+  }
+
+  // Snapshot at app load. References to TODAY_WORKOUT.* stay correct for the
+  // session; on a new day, the user reloads (PWA) and gets the right one.
+  const TODAY_WORKOUT = todaysULWorkout();
 
   // ---------------------------------------------------------------------------
   // Settings — single source of truth. Apps Script will hydrate / persist later.
   // SPEC § 2 defaults (Will edits these in Settings, not here).
   // ---------------------------------------------------------------------------
-  const TODAY_ISO = '2026-05-05';
+  const TODAY_ISO = new Date().toISOString().slice(0, 10);
   const SETTINGS = {
     goalWeight:     170,
     goalDate:       '2026-07-01',
