@@ -1480,3 +1480,116 @@ body:has(.onboarding:not([hidden])) .tabbar { display: none; }
     animation-iteration-count: 1 !important;
   }
 }
+
+/* ------------------------------------------------------------------
+   Workout picker chip — overrides day-of-week routing for today only.
+   ------------------------------------------------------------------ */
+.workout-picker {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+  padding: 8px 12px;
+  background: var(--card);
+  border: 1px solid var(--card-2);
+  border-radius: 999px;
+  position: relative;
+  min-height: 44px;
+}
+.workout-picker-label {
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #9A9A9A;
+}
+.workout-picker-select {
+  appearance: none;
+  -webkit-appearance: none;
+  background: transparent;
+  color: #EAEAEA;
+  border: 0;
+  font: 600 15px/1 inherit;
+  padding: 0 4px;
+  cursor: pointer;
+}
+.workout-picker-select:focus-visible {
+  outline: 2px solid var(--accent-blue);
+  outline-offset: 4px;
+  border-radius: 4px;
+}
+.workout-picker-chevron {
+  width: 14px;
+  height: 14px;
+  color: #9A9A9A;
+  pointer-events: none;
+}
+.workout-picker[data-override="1"] {
+  border-color: var(--accent-blue);
+}
+.workout-picker[data-override="1"] .workout-picker-label {
+  color: var(--accent-blue-text);
+}
+
+/* ------------------------------------------------------------------
+   Weight history list — last N entries logged from this device.
+   ------------------------------------------------------------------ */
+.weight-history-card .chart-title { margin-bottom: 8px; }
+.weight-history-list { display: flex; flex-direction: column; }
+.weight-history-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--card-2);
+  gap: 12px;
+}
+.weight-history-row:last-child { border-bottom: 0; }
+.weight-history-date {
+  color: #9A9A9A;
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
+}
+.weight-history-weight {
+  color: #EAEAEA;
+  font-size: 18px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.weight-history-empty {
+  color: #9A9A9A;
+  font-size: 14px;
+  margin: 4px 0;
+}
+
+/* ------------------------------------------------------------------
+   Toast — bottom-anchored confirmation banner.
+   ------------------------------------------------------------------ */
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: calc(80px + env(safe-area-inset-bottom));
+  transform: translateX(-50%) translateY(20px);
+  background: #1F3A2A;
+  color: #B9F0CC;
+  border: 1px solid #2C5A40;
+  border-radius: 10px;
+  padding: 12px 18px;
+  font-size: 15px;
+  font-weight: 600;
+  box-shadow: 0 10px 32px rgba(0,0,0,0.45);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.22s ease, transform 0.22s ease;
+  z-index: 9999;
+  max-width: calc(100vw - 32px);
+  text-align: center;
+}
+.toast.is-visible {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+.toast[data-tone="error"] {
+  background: #3A1A1A;
+  color: #FFB4B4;
+  border-color: #5A2C2C;
+}

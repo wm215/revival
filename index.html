@@ -37,6 +37,20 @@
           </span>
         </div>
         <h1 id="today-title"></h1>
+        <label class="workout-picker" for="workout-picker-select">
+          <span class="workout-picker-label">Show</span>
+          <select id="workout-picker-select" class="workout-picker-select" aria-label="Choose which workout to view today">
+            <option value="auto">Today's scheduled workout</option>
+            <option value="upper-a">Upper A</option>
+            <option value="lower-a">Lower A</option>
+            <option value="upper-b">Upper B</option>
+            <option value="lower-b">Lower B</option>
+            <option value="rest">Rest day</option>
+          </select>
+          <svg class="workout-picker-chevron" viewBox="0 0 16 16" aria-hidden="true" focusable="false">
+            <path d="M4 6l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </label>
       </header>
       <section class="briefing-card" id="briefing-card" aria-labelledby="briefing-eyebrow"></section>
       <p class="progression-counter" id="progression-counter" aria-live="polite"></p>
@@ -70,6 +84,13 @@
             <button id="weight-save" class="weight-entry-save" type="button">Save</button>
           </div>
           <p class="weight-entry-meta" id="weight-entry-meta"></p>
+        </div>
+
+        <div class="card weight-history-card">
+          <p class="chart-title">Recent entries</p>
+          <div class="weight-history-list" id="weight-history-list">
+            <p class="weight-history-empty">No weight entries yet. Type today's weight above.</p>
+          </div>
         </div>
 
         <div class="card weight-progress-card">
@@ -127,6 +148,8 @@
     </section>
 
   </main>
+
+  <div id="toast" class="toast" role="status" aria-live="polite" aria-atomic="true" hidden></div>
 
   <div id="rest-timer" class="rest-timer" role="dialog" aria-label="Rest timer" hidden>
     <button id="rest-timer-btn" class="rest-timer-btn" type="button" aria-label="Dismiss rest timer">

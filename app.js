@@ -931,6 +931,128 @@
     return d.getFullYear() + '-' + m + '-' + day;
   }
 
+  // Pretty local-time string like "12:42 PM" — for toast / save confirmations.
+  function nowTimeStr() {
+    const d = new Date();
+    let h = d.getHours();
+    const m = String(d.getMinutes()).padStart(2, '0');
+    const ampm = h >= 12 ? 'PM' : 'AM';
+    h = h % 12; if (h === 0) h = 12;
+    return h + ':' + m + ' ' + ampm;
+  }
+
+  // ---------------------------------------------------------------------------
+  // Toast — bottom-of-screen confirmation banner. Auto-dismiss after 3s.
+  // ---------------------------------------------------------------------------
+  let _toastHideTimer = null;
+  let _toastClearTimer = null;
+  function showToast(text, tone) {
+    const node = document.getElementById('toast');
+    if (!node) return;
+    node.textContent = text;
+    node.dataset.tone = tone || 'success';
+    node.hidden = false;
+    // Force a reflow so the class transition fires
+    void node.offsetWidth;
+    node.classList.add('is-visible');
+    clearTimeout(_toastHideTimer);
+    clearTimeout(_toastClearTimer);
+    _toastHideTimer = setTimeout(() => {
+      node.classList.remove('is-visible');
+      _toastClearTimer = setTimeout(() => { node.hidden = true; }, 300);
+    }, 3000);
+  }
+
+  // ---------------------------------------------------------------------------
+  // Weight history — localStorage-backed log of recent weight entries from
+  // this device. Independent from the Sheet — purely a UI cache so Will can
+  // see what he just saved without needing to open the Sheet to verify.
+  // ---------------------------------------------------------------------------
+  const WEIGHT_HISTORY_KEY = 'revival.weightHistory.v1';
+  const WEIGHT_HISTORY_CAP = 30;
+
+  function loadWeightHistory() {
+    try {
+      const raw = localStorage.getItem(WEIGHT_HISTORY_KEY);
+      const arr = raw ? JSON.parse(raw) : [];
+      return Array.isArray(arr) ? arr : [];
+    } catch (e) { return []; }
+  }
+
+  function appendWeightHistory(entry) {
+    const all = loadWeightHistory();
+    // Dedupe by date — last write wins, just like the Sheet's findOrCreateRow.
+    const filtered = all.filter(e => e.date !== entry.date);
+    filtered.unshift(entry);
+    const trimmed = filtered.slice(0, WEIGHT_HISTORY_CAP);
+    try { localStorage.setItem(WEIGHT_HISTORY_KEY, JSON.stringify(trimmed)); }
+    catch (e) { console.warn('[revival] weight history save failed', e); }
+  }
+
+  function renderWeightHistory() {
+    const node = document.getElementById('weight-history-list');
+    if (!node) return;
+    const all = loadWeightHistory();
+    node.innerHTML = '';
+    if (all.length === 0) {
+      const p = document.createElement('p');
+      p.className = 'weight-history-empty';
+      p.textContent = 'No weight entries yet. Type today’s weight above.';
+      node.appendChild(p);
+      return;
+    }
+    all.slice(0, 14).forEach(e => {
+      const row = document.createElement('div');
+      row.className = 'weight-history-row';
+      const dateSpan = document.createElement('span');
+      dateSpan.className = 'weight-history-date';
+      dateSpan.textContent = formatHistoryDate(e.date);
+      const wSpan = document.createElement('span');
+      wSpan.className = 'weight-history-weight';
+      wSpan.textContent = e.weight + ' lb';
+      row.appendChild(dateSpan);
+      row.appendChild(wSpan);
+      node.appendChild(row);
+    });
+  }
+
+  function formatHistoryDate(iso) {
+    // iso is YYYY-MM-DD (local). Show "Wed May 20" style.
+    const parts = iso.split('-');
+    if (parts.length !== 3) return iso;
+    const d = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
+    return d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+  }
+
+  // ---------------------------------------------------------------------------
+  // Workout picker — overrides day-of-week routing for today only. Stored in
+  // localStorage with today's date in the key, so the override resets at
+  // midnight (next day's lookup misses the key and falls back to "auto").
+  // ---------------------------------------------------------------------------
+  const PICK_KEY_PREFIX = 'revival.workoutPick.';
+
+  function getTodaysPick() {
+    try { return localStorage.getItem(PICK_KEY_PREFIX + todayDateStr()) || 'auto'; }
+    catch (e) { return 'auto'; }
+  }
+
+  function setTodaysPick(value) {
+    const key = PICK_KEY_PREFIX + todayDateStr();
+    try {
+      if (!value || value === 'auto') localStorage.removeItem(key);
+      else localStorage.setItem(key, value);
+    } catch (e) { console.warn('[revival] pick save failed', e); }
+  }
+
+  function pickToWorkout(pick) {
+    if (pick === 'upper-a') return Object.assign({}, WORKOUT_UPPER_A, { day: DAY_NAMES[new Date().getDay()] });
+    if (pick === 'lower-a') return Object.assign({}, WORKOUT_LOWER_A, { day: DAY_NAMES[new Date().getDay()] });
+    if (pick === 'upper-b') return Object.assign({}, WORKOUT_UPPER_B, { day: DAY_NAMES[new Date().getDay()] });
+    if (pick === 'lower-b') return Object.assign({}, WORKOUT_LOWER_B, { day: DAY_NAMES[new Date().getDay()] });
+    if (pick === 'rest')    return { day: DAY_NAMES[new Date().getDay()], workoutName: 'Rest day', exercises: [] };
+    return null;
+  }
+
   function trySaveSet(row) {
     const card = row.closest('.exercise');
     if (!card) return;
@@ -1053,6 +1175,7 @@
   }
 
   function renderWeightView() {
+    renderWeightHistory();   // localStorage-backed list of recent entries
     const log = MOCK_WEIGHT_LOG.slice();
     const latest = log[log.length - 1];
     const previous = log.length > 1 ? log[log.length - 2] : null;
@@ -1185,11 +1308,16 @@
         MOCK_WEIGHT_LOG.push({ date: TODAY_ISO, weight: v });
         const last = MOCK_WEIGHT_LOG[MOCK_WEIGHT_LOG.length - 2];
         if (last && last.date === TODAY_ISO) MOCK_WEIGHT_LOG.splice(-2, 1);
+        appendWeightHistory({ date: TODAY_ISO, weight: v, source: 'Manual', ts: Date.now() });
         renderWeightView();
         pulseEntry();
         input.blur();
         updateSyncIndicator();
-      }).catch(err => console.error('[revival] log_weight queue failed', err));
+        showToast('Saved · ' + v + ' lb · ' + nowTimeStr());
+      }).catch(err => {
+        console.error('[revival] log_weight queue failed', err);
+        showToast('Save failed — try again', 'error');
+      });
     });
   }
 
@@ -1217,13 +1345,17 @@
   }
 
   function workoutForActiveSplit() {
-    if (SETTINGS.activeSplit === 'UL 4d') return withSwapOverrides(TODAY_WORKOUT);
-    return null; // PPL 6d / Original 6d not mocked yet
+    if (SETTINGS.activeSplit !== 'UL 4d') return null; // PPL 6d / Original 6d not mocked yet
+    const pick = getTodaysPick();
+    const overridden = pick === 'auto' ? null : pickToWorkout(pick);
+    const base = overridden || todaysULWorkout();
+    return withSwapOverrides(base);
   }
 
   function getActiveWorkout() { return workoutForActiveSplit() || null; }
 
   function renderTodayForSplit() {
+    if (typeof updatePickerUI === 'function') updatePickerUI();
     const w = workoutForActiveSplit();
     const eyebrow = document.getElementById('today-eyebrow');
     const title   = document.getElementById('today-title');
@@ -1934,8 +2066,36 @@
   tabs.forEach(t => t.addEventListener('click', () => show(t.dataset.target)));
 
   // ---------------------------------------------------------------------------
+  // Workout-picker wiring — runs once on boot. Reflects current pick in the
+  // <select>, and re-renders Today when the user changes it.
+  // ---------------------------------------------------------------------------
+  function updatePickerUI() {
+    const sel = document.getElementById('workout-picker-select');
+    const chip = document.querySelector('.workout-picker');
+    if (!sel || !chip) return;
+    const pick = getTodaysPick();
+    sel.value = pick;
+    chip.dataset.override = (pick === 'auto') ? '0' : '1';
+  }
+
+  function wireWorkoutPicker() {
+    const sel = document.getElementById('workout-picker-select');
+    if (!sel) return;
+    sel.addEventListener('change', () => {
+      setTodaysPick(sel.value);
+      updatePickerUI();
+      renderTodayForSplit();
+      showToast(sel.value === 'auto'
+        ? 'Showing today’s scheduled workout'
+        : 'Switched to ' + sel.options[sel.selectedIndex].text);
+    });
+  }
+
+  // ---------------------------------------------------------------------------
   // Boot
   // ---------------------------------------------------------------------------
+  wireWorkoutPicker();
+  updatePickerUI();
   renderTodayForSplit();
   renderWeightView();
   wireWeightSave();
