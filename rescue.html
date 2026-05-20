@@ -1,0 +1,230 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0A0A0A">
+  <title>Revival · Rescue</title>
+  <style>
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; background: #0A0A0A; color: #EAEAEA; font: 16px/1.4 -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif; }
+    main { max-width: 640px; margin: 0 auto; padding: 24px 18px 64px; }
+    h1 { font-size: 24px; margin: 0 0 4px; font-weight: 700; }
+    .sub { color: #9A9A9A; font-size: 14px; margin-bottom: 24px; }
+    .panel { background: #161616; border: 1px solid #262626; border-radius: 12px; padding: 18px; margin-bottom: 16px; }
+    .stat { font-size: 32px; font-weight: 700; margin: 4px 0; }
+    .stat-label { color: #9A9A9A; font-size: 12px; text-transform: uppercase; letter-spacing: 0.04em; }
+    button { display: block; width: 100%; padding: 14px 16px; border-radius: 10px; font-size: 16px; font-weight: 600; border: 0; cursor: pointer; margin-top: 10px; min-height: 48px; }
+    .btn-primary { background: #3478F6; color: white; }
+    .btn-primary:disabled { background: #1F3A6E; color: #8FA9D4; }
+    .btn-secondary { background: #2A2A2A; color: #EAEAEA; }
+    .btn-danger { background: #5A1A1A; color: #FFC2C2; }
+    .log { background: #0F0F0F; border: 1px solid #1F1F1F; border-radius: 8px; padding: 12px; font: 12px/1.4 ui-monospace, SFMono-Regular, Menlo, monospace; white-space: pre-wrap; word-break: break-all; max-height: 280px; overflow: auto; }
+    .row-ok    { color: #4FD46A; }
+    .row-fail  { color: #FF8A8A; }
+    .row-info  { color: #9A9A9A; }
+    table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    th, td { padding: 6px 8px; border-bottom: 1px solid #222; text-align: left; vertical-align: top; }
+    th { color: #888; font-weight: 600; font-size: 11px; text-transform: uppercase; }
+    code { color: #B5C8FF; }
+    .small { font-size: 13px; color: #AAA; }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Revival Rescue</h1>
+    <div class="sub">Reads the pending workout queue from your phone and sends it to the Google Sheet. Use this when the main app isn't syncing.</div>
+
+    <div class="panel">
+      <div class="stat-label">Pending writes on this device</div>
+      <div class="stat" id="count">…</div>
+      <div class="small" id="origin"></div>
+    </div>
+
+    <div class="panel">
+      <button id="btn-backup"  class="btn-secondary">1 · Download backup (JSON)</button>
+      <button id="btn-send"    class="btn-primary" disabled>2 · Send to Sheet</button>
+      <button id="btn-refresh" class="btn-secondary">Refresh count</button>
+    </div>
+
+    <div class="panel">
+      <div class="stat-label">Activity</div>
+      <div class="log" id="log">Ready.</div>
+    </div>
+
+    <div class="panel" id="preview-panel" hidden>
+      <div class="stat-label">Preview (first 20 rows)</div>
+      <table id="preview"><thead><tr><th>#</th><th>Action</th><th>Payload</th></tr></thead><tbody></tbody></table>
+    </div>
+  </main>
+
+  <script>
+  (function () {
+    'use strict';
+
+    // Must match app.js / SETTINGS.appsScriptUrl
+    var APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwAYGx4bmY6RCNmhUziETCdqPwYw2mXZQk-zF-1rqYYPoCEJTgdhSh8Hd5rPSbjh5H_/exec';
+    var DB_NAME = 'revival';
+    var DB_VER  = 1;
+    var STORE   = 'pendingWrites';
+
+    var $ = function (id) { return document.getElementById(id); };
+    var logEl = $('log');
+
+    document.getElementById('origin').textContent = 'origin: ' + location.origin + ' · target sheet: 1TVVkCCYLW82R3iF0Mh6dgupjCBXfcId15rZ_su6EDP8';
+
+    function log(msg, cls) {
+      var line = document.createElement('div');
+      if (cls) line.className = cls;
+      line.textContent = '[' + new Date().toLocaleTimeString() + '] ' + msg;
+      logEl.appendChild(line);
+      logEl.scrollTop = logEl.scrollHeight;
+    }
+
+    function openDb() {
+      return new Promise(function (resolve, reject) {
+        var req = indexedDB.open(DB_NAME, DB_VER);
+        req.onupgradeneeded = function (e) {
+          // The store may not exist if this device never ran the PWA. Create it so the
+          // open doesn't fail, but readAll will just return [].
+          var db = e.target.result;
+          if (!db.objectStoreNames.contains(STORE)) {
+            db.createObjectStore(STORE, { keyPath: 'id', autoIncrement: true });
+          }
+        };
+        req.onsuccess = function () { resolve(req.result); };
+        req.onerror   = function () { reject(req.error); };
+      });
+    }
+
+    function readAll(db) {
+      return new Promise(function (resolve) {
+        var out = [];
+        var req = db.transaction(STORE, 'readonly').objectStore(STORE).openCursor();
+        req.onsuccess = function (e) {
+          var cur = e.target.result;
+          if (cur) { out.push({ key: cur.key, value: cur.value }); cur.continue(); }
+          else resolve(out.sort(function (a, b) { return a.key - b.key; }));
+        };
+        req.onerror = function () { resolve(out); };
+      });
+    }
+
+    function deleteKey(db, key) {
+      return new Promise(function (resolve) {
+        var req = db.transaction(STORE, 'readwrite').objectStore(STORE).delete(key);
+        req.onsuccess = function () { resolve(); };
+        req.onerror   = function () { resolve(); };
+      });
+    }
+
+    function postOne(action, payload) {
+      var body = JSON.stringify(Object.assign({ action: action }, payload));
+      return fetch(APPS_SCRIPT_URL, {
+        method: 'POST',
+        mode: 'no-cors',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: body
+      });
+    }
+
+    function renderPreview(items) {
+      if (items.length === 0) return;
+      var panel = $('preview-panel');
+      var tbody = panel.querySelector('tbody');
+      tbody.innerHTML = '';
+      items.slice(0, 20).forEach(function (it, idx) {
+        var tr = document.createElement('tr');
+        var k = document.createElement('td'); k.textContent = String(it.key);
+        var a = document.createElement('td'); a.innerHTML = '<code>' + (it.value.action || '?') + '</code>';
+        var p = document.createElement('td'); p.innerHTML = '<code>' + escapeHtml(JSON.stringify(it.value.payload || {})) + '</code>';
+        tr.appendChild(k); tr.appendChild(a); tr.appendChild(p);
+        tbody.appendChild(tr);
+      });
+      panel.hidden = false;
+    }
+
+    function escapeHtml(s) {
+      return s.replace(/[&<>"']/g, function (c) {
+        return { '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c];
+      });
+    }
+
+    var dbPromise = openDb().catch(function (err) {
+      log('Could not open IndexedDB: ' + err, 'row-fail');
+      return null;
+    });
+
+    function refresh() {
+      $('count').textContent = '…';
+      $('btn-send').disabled = true;
+      return dbPromise.then(function (db) {
+        if (!db) { $('count').textContent = '?'; return []; }
+        return readAll(db).then(function (items) {
+          $('count').textContent = items.length;
+          $('btn-send').disabled = items.length === 0;
+          log('Found ' + items.length + ' pending row(s).', 'row-info');
+          renderPreview(items);
+          return items;
+        });
+      });
+    }
+
+    $('btn-refresh').addEventListener('click', refresh);
+
+    $('btn-backup').addEventListener('click', function () {
+      dbPromise.then(function (db) {
+        if (!db) { log('No DB.', 'row-fail'); return; }
+        return readAll(db).then(function (items) {
+          var stamp = new Date().toISOString().replace(/[:.]/g, '-');
+          var blob = new Blob([JSON.stringify(items, null, 2)], { type: 'application/json' });
+          var url = URL.createObjectURL(blob);
+          var a = document.createElement('a');
+          a.href = url;
+          a.download = 'revival-pending-' + stamp + '.json';
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          URL.revokeObjectURL(url);
+          log('Downloaded backup of ' + items.length + ' row(s).', 'row-ok');
+        });
+      });
+    });
+
+    $('btn-send').addEventListener('click', function () {
+      $('btn-send').disabled = true;
+      dbPromise.then(function (db) {
+        if (!db) { log('No DB.', 'row-fail'); return; }
+        return readAll(db).then(function (items) {
+          if (items.length === 0) { log('Nothing to send.', 'row-info'); return; }
+          log('Sending ' + items.length + ' row(s) to Apps Script…', 'row-info');
+          var sent = 0, failed = 0;
+          var chain = Promise.resolve();
+          items.forEach(function (it) {
+            chain = chain.then(function () {
+              return postOne(it.value.action, it.value.payload)
+                .then(function () {
+                  return deleteKey(db, it.key).then(function () {
+                    sent++;
+                    log('OK · #' + it.key + ' · ' + it.value.action, 'row-ok');
+                  });
+                })
+                .catch(function (err) {
+                  failed++;
+                  log('FAIL · #' + it.key + ' · ' + it.value.action + ' · ' + err, 'row-fail');
+                });
+            });
+          });
+          return chain.then(function () {
+            log('Done. sent=' + sent + ' failed=' + failed, 'row-ok');
+            return refresh();
+          });
+        });
+      });
+    });
+
+    refresh();
+  })();
+  </script>
+</body>
+</html>
