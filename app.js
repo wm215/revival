@@ -187,15 +187,187 @@
     ]
   };
 
+  // ---------------------------------------------------------------------------
+  // PPL 6d workouts — sourced from Block_PPL_6d sheet, snapped to SPEC § 3
+  // two-bucket rule (pink 8-10 compound / orange 12-15 isolation). All weights
+  // and prior loads start at null until logged in this build.
+  // ---------------------------------------------------------------------------
+  const WORKOUT_PUSH_1 = {
+    day: 'Monday',
+    workoutName: 'Push 1',
+    exercises: [
+      { id: 'bench-bb',         name: 'Flat Barbell Bench Press',     pattern: 'horiz_push', bucket: 'pink',   sets: 3, repsLow: 8,  repsHigh: 10, rir: 4, last: null },
+      { id: 'incline-db',       name: 'Incline DB Press',             pattern: 'horiz_push', bucket: 'pink',   sets: 3, repsLow: 8,  repsHigh: 10, rir: 4, last: null },
+      { id: 'cable-fly',        name: 'Cable Crossover (high-low)',   pattern: 'horiz_push', bucket: 'orange', sets: 3, repsLow: 12, repsHigh: 15, rir: 4, last: null },
+      { id: 'ohp-db',           name: 'Seated DB Shoulder Press',     pattern: 'vert_push',  bucket: 'pink',   sets: 3, repsLow: 8,  repsHigh: 10, rir: 4, last: null },
+      { id: 'lateral-raise',    name: 'DB Lateral Raise',             pattern: 'vert_push',  bucket: 'orange', sets: 3, repsLow: 12, repsHigh: 15, rir: 4, last: null },
+      { id: 'tricep-pushdown',  name: 'Cable Pressdown',              pattern: 'iso_tricep', bucket: 'orange', sets: 3, repsLow: 12, repsHigh: 15, rir: 4, last: null }
+    ]
+  };
+
+  const WORKOUT_PULL_1 = {
+    day: 'Tuesday',
+    workoutName: 'Pull 1',
+    exercises: [
+      { id: 'lat-pulldown',     name: 'Lat Pulldown (wide)',          pattern: 'vert_pull',  bucket: 'pink',   sets: 3, repsLow: 8,  repsHigh: 10, rir: 4, last: null },
+      { id: 'chest-supp-row',   name: 'Chest-Supported Row',          pattern: 'horiz_pull', bucket: 'pink',   sets: 3, repsLow: 8,  repsHigh: 10, rir: 4, last: null },
+      { id: 'straight-arm-pd',  name: 'Straight-Arm Pulldown',        pattern: 'horiz_pull', bucket: 'orange', sets: 3, repsLow: 12, repsHigh: 15, rir: 4, last: null },
+      { id: 'face-pull',        name: 'Face Pull',                    pattern: 'horiz_pull', bucket: 'orange', sets: 3, repsLow: 12, repsHigh: 15, rir: 4, last: null },
+      { id: 'ez-bar-curl',      name: 'EZ-Bar Curl',                  pattern: 'iso_bicep',  bucket: 'orange', sets: 3, repsLow: 12, repsHigh: 15, rir: 4, last: null },
+      { id: 'bicep-curl',       name: 'DB Incline Curl',              pattern: 'iso_bicep',  bucket: 'orange', sets: 3, repsLow: 12, repsHigh: 15, rir: 4, last: null }
+    ]
+  };
+
+  const WORKOUT_LEGS_1 = {
+    day: 'Wednesday',
+    workoutName: 'Legs 1',
+    exercises: [
+      { id: 'hack-squat',          name: 'Hack Squat',                pattern: 'quad',     bucket: 'pink',   sets: 3, repsLow: 8,  repsHigh: 10, rir: 4, last: null },
+      { id: 'leg-press',           name: 'Leg Press',                 pattern: 'quad',     bucket: 'pink',   sets: 3, repsLow: 8,  repsHigh: 10, rir: 4, last: null },
+      { id: 'bulgarian-ss',        name: 'Bulgarian Split Squat',     pattern: 'quad',     bucket: 'pink',   sets: 3, repsLow: 8,  repsHigh: 10, rir: 4, last: null },
+      { id: 'leg-extension',       name: 'Leg Extension',             pattern: 'quad',     bucket: 'orange', sets: 3, repsLow: 12, repsHigh: 15, rir: 4, last: null },
+      { id: 'seated-leg-curl',     name: 'Seated Leg Curl',           pattern: 'hinge',    bucket: 'orange', sets: 3, repsLow: 12, repsHigh: 15, rir: 4, last: null },
+      { id: 'standing-calf-raise', name: 'Standing Calf Raise',       pattern: 'iso_calf', bucket: 'orange', sets: 3, repsLow: 12, repsHigh: 15, rir: 4, last: null }
+    ]
+  };
+
+  const WORKOUT_PUSH_2 = {
+    day: 'Thursday',
+    workoutName: 'Push 2',
+    exercises: [
+      { id: 'ohp-db-2',         name: 'Seated DB Shoulder Press',     pattern: 'vert_push',  bucket: 'pink',   sets: 3, repsLow: 8,  repsHigh: 10, rir: 4, last: null },
+      { id: 'incline-db-2',     name: 'Incline DB Press',             pattern: 'horiz_push', bucket: 'pink',   sets: 3, repsLow: 8,  repsHigh: 10, rir: 4, last: null },
+      { id: 'cable-lat-raise',  name: 'Cable Lateral Raise',          pattern: 'vert_push',  bucket: 'orange', sets: 3, repsLow: 12, repsHigh: 15, rir: 4, last: null },
+      { id: 'pec-deck',         name: 'Pec Dec',                      pattern: 'horiz_push', bucket: 'orange', sets: 3, repsLow: 12, repsHigh: 15, rir: 4, last: null },
+      { id: 'skull-crusher',    name: 'Skullcrusher (EZ Bar)',        pattern: 'iso_tricep', bucket: 'orange', sets: 3, repsLow: 12, repsHigh: 15, rir: 4, last: null },
+      { id: 'overhead-tricep',  name: 'Overhead Cable Triceps Ext',   pattern: 'iso_tricep', bucket: 'orange', sets: 3, repsLow: 12, repsHigh: 15, rir: 4, last: null }
+    ]
+  };
+
+  const WORKOUT_PULL_2 = {
+    day: 'Friday',
+    workoutName: 'Pull 2',
+    exercises: [
+      { id: 'pendlay-row',      name: 'Pendlay Row (Barbell)',        pattern: 'horiz_pull', bucket: 'pink',   sets: 3, repsLow: 8,  repsHigh: 10, rir: 4, last: null },
+      { id: 'pull-up',          name: 'Pull-Up',                      pattern: 'vert_pull',  bucket: 'pink',   sets: 3, repsLow: 8,  repsHigh: 10, rir: 4, last: null },
+      { id: 'cable-row',        name: 'Cable Row (close grip)',       pattern: 'horiz_pull', bucket: 'pink',   sets: 3, repsLow: 8,  repsHigh: 10, rir: 4, last: null },
+      { id: 'rear-delt-fly',    name: 'Reverse Pec Dec',              pattern: 'horiz_pull', bucket: 'orange', sets: 3, repsLow: 12, repsHigh: 15, rir: 4, last: null },
+      { id: 'hammer-curl',      name: 'Hammer Curl',                  pattern: 'iso_bicep',  bucket: 'orange', sets: 3, repsLow: 12, repsHigh: 15, rir: 4, last: null },
+      { id: 'cable-curl',       name: 'Cable Curl',                   pattern: 'iso_bicep',  bucket: 'orange', sets: 3, repsLow: 12, repsHigh: 15, rir: 4, last: null }
+    ]
+  };
+
+  const WORKOUT_LEGS_2 = {
+    day: 'Saturday',
+    workoutName: 'Legs 2',
+    exercises: [
+      { id: 'rdl-bb',              name: 'Romanian Deadlift',         pattern: 'hinge',    bucket: 'pink',   sets: 3, repsLow: 8,  repsHigh: 10, rir: 4, last: null },
+      { id: 'leg-press-glute',     name: 'Leg Press (high feet)',     pattern: 'quad',     bucket: 'pink',   sets: 3, repsLow: 8,  repsHigh: 10, rir: 4, last: null },
+      { id: 'lying-leg-curl',      name: 'Lying Leg Curl',            pattern: 'hinge',    bucket: 'orange', sets: 3, repsLow: 12, repsHigh: 15, rir: 4, last: null },
+      { id: 'walking-lunges-db',   name: 'Walking Lunges (DB)',       pattern: 'quad',     bucket: 'pink',   sets: 3, repsLow: 8,  repsHigh: 10, rir: 4, last: null },
+      { id: 'seated-calf-raise',   name: 'Seated Calf Raise',         pattern: 'iso_calf', bucket: 'orange', sets: 3, repsLow: 12, repsHigh: 15, rir: 4, last: null },
+      { id: 'cable-crunch',        name: 'Cable Crunch',              pattern: 'iso_core', bucket: 'orange', sets: 3, repsLow: 12, repsHigh: 15, rir: 4, last: null }
+    ]
+  };
+
+  // ---------------------------------------------------------------------------
+  // Original 6d workouts — Will's prior split. Schedule is 5 lifting days
+  // (Wed/Sun off). Sourced from Block_Original tab + SPEC § 3 normalization.
+  // ---------------------------------------------------------------------------
+  const WORKOUT_UPPER_1 = {
+    day: 'Monday',
+    workoutName: 'Upper 1',
+    exercises: [
+      { id: 'bench-db-orig',    name: 'DB Bench Press (horizontal)',  pattern: 'horiz_push', bucket: 'pink',   sets: 3, repsLow: 8,  repsHigh: 10, rir: 4, last: null },
+      { id: 'incline-supp-row', name: 'Incline DB Supported Row',     pattern: 'horiz_pull', bucket: 'pink',   sets: 3, repsLow: 8,  repsHigh: 10, rir: 4, last: null },
+      { id: 'incline-db-orig',  name: 'Incline DB Press',             pattern: 'horiz_push', bucket: 'pink',   sets: 3, repsLow: 8,  repsHigh: 10, rir: 4, last: null },
+      { id: 'cable-pulldowns',  name: 'Cable Pull-Downs',             pattern: 'vert_pull',  bucket: 'pink',   sets: 3, repsLow: 8,  repsHigh: 10, rir: 4, last: null },
+      { id: 'lateral-raise-db', name: 'Lateral Raise (DB)',           pattern: 'vert_push',  bucket: 'orange', sets: 3, repsLow: 12, repsHigh: 15, rir: 4, last: null },
+      { id: 'tricep-pushdown-v',name: 'Cable Pressdown (V-bar)',      pattern: 'iso_tricep', bucket: 'orange', sets: 3, repsLow: 12, repsHigh: 15, rir: 4, last: null },
+      { id: 'standing-curl-ez', name: 'Standing Curl (EZ Bar)',       pattern: 'iso_bicep',  bucket: 'orange', sets: 3, repsLow: 12, repsHigh: 15, rir: 4, last: null }
+    ]
+  };
+
+  const WORKOUT_LOWER_1 = {
+    day: 'Tuesday',
+    workoutName: 'Lower 1',
+    exercises: [
+      { id: 'leg-press-orig',      name: 'Leg Press',                 pattern: 'quad',     bucket: 'pink',   sets: 3, repsLow: 8,  repsHigh: 10, rir: 4, last: null },
+      { id: 'squat-high-bar',      name: 'Squat (High Bar)',          pattern: 'quad',     bucket: 'pink',   sets: 3, repsLow: 8,  repsHigh: 10, rir: 4, last: null },
+      { id: 'rdl-bb-orig',         name: 'Romanian Deadlift',         pattern: 'hinge',    bucket: 'pink',   sets: 3, repsLow: 8,  repsHigh: 10, rir: 4, last: null },
+      { id: 'leg-extension-orig',  name: 'Leg Extension',             pattern: 'quad',     bucket: 'orange', sets: 3, repsLow: 12, repsHigh: 15, rir: 4, last: null },
+      { id: 'seated-leg-curl-o',   name: 'Seated Leg Curl',           pattern: 'hinge',    bucket: 'orange', sets: 3, repsLow: 12, repsHigh: 15, rir: 4, last: null },
+      { id: 'standing-calf-orig',  name: 'Standing Calf Raise',       pattern: 'iso_calf', bucket: 'orange', sets: 3, repsLow: 12, repsHigh: 15, rir: 4, last: null }
+    ]
+  };
+
+  const WORKOUT_CHEST_ARMS = {
+    day: 'Thursday',
+    workoutName: 'Chest / Arms',
+    exercises: [
+      { id: 'flat-bb-bench-orig',  name: 'Flat Barbell Bench',        pattern: 'horiz_push', bucket: 'pink',   sets: 3, repsLow: 8,  repsHigh: 10, rir: 4, last: null },
+      { id: 'incline-db-ca',       name: 'Incline DB Press',          pattern: 'horiz_push', bucket: 'pink',   sets: 3, repsLow: 8,  repsHigh: 10, rir: 4, last: null },
+      { id: 'cable-crossover',     name: 'Cable Crossover',           pattern: 'horiz_push', bucket: 'orange', sets: 3, repsLow: 12, repsHigh: 15, rir: 4, last: null },
+      { id: 'skull-crusher-ca',    name: 'Skullcrusher',              pattern: 'iso_tricep', bucket: 'orange', sets: 3, repsLow: 12, repsHigh: 15, rir: 4, last: null },
+      { id: 'ez-bar-curl-ca',      name: 'EZ-Bar Curl',               pattern: 'iso_bicep',  bucket: 'orange', sets: 3, repsLow: 12, repsHigh: 15, rir: 4, last: null },
+      { id: 'hammer-curl-ca',      name: 'Hammer Curl',               pattern: 'iso_bicep',  bucket: 'orange', sets: 3, repsLow: 12, repsHigh: 15, rir: 4, last: null }
+    ]
+  };
+
+  const WORKOUT_BACK_DELTS = {
+    day: 'Friday',
+    workoutName: 'Back / Delts',
+    exercises: [
+      { id: 'pull-up-orig',     name: 'Pull-Up',                      pattern: 'vert_pull',  bucket: 'pink',   sets: 3, repsLow: 8,  repsHigh: 10, rir: 4, last: null },
+      { id: 'bb-row',           name: 'Barbell Row',                  pattern: 'horiz_pull', bucket: 'pink',   sets: 3, repsLow: 8,  repsHigh: 10, rir: 4, last: null },
+      { id: 'lat-pulldown-bd',  name: 'Lat Pulldown',                 pattern: 'vert_pull',  bucket: 'pink',   sets: 3, repsLow: 8,  repsHigh: 10, rir: 4, last: null },
+      { id: 'ohp-db-bd',        name: 'Seated DB Press',              pattern: 'vert_push',  bucket: 'pink',   sets: 3, repsLow: 8,  repsHigh: 10, rir: 4, last: null },
+      { id: 'cable-lat-raise-bd', name: 'Lateral Raise (Cable)',      pattern: 'vert_push',  bucket: 'orange', sets: 3, repsLow: 12, repsHigh: 15, rir: 4, last: null },
+      { id: 'face-pull-bd',     name: 'Face Pull',                    pattern: 'horiz_pull', bucket: 'orange', sets: 3, repsLow: 12, repsHigh: 15, rir: 4, last: null }
+    ]
+  };
+
+  const WORKOUT_LOWER_2_HINGE = {
+    day: 'Saturday',
+    workoutName: 'Lower 2 (Hinge)',
+    exercises: [
+      { id: 'conv-deadlift',       name: 'Conventional Deadlift',     pattern: 'hinge',    bucket: 'pink',   sets: 3, repsLow: 8,  repsHigh: 10, rir: 4, last: null },
+      { id: 'front-squat',         name: 'Front Squat',               pattern: 'quad',     bucket: 'pink',   sets: 3, repsLow: 8,  repsHigh: 10, rir: 4, last: null },
+      { id: 'lying-leg-curl-l2',   name: 'Lying Leg Curl',            pattern: 'hinge',    bucket: 'orange', sets: 3, repsLow: 12, repsHigh: 15, rir: 4, last: null },
+      { id: 'walking-lunges',      name: 'Walking Lunges',            pattern: 'quad',     bucket: 'pink',   sets: 3, repsLow: 8,  repsHigh: 10, rir: 4, last: null },
+      { id: 'seated-calf-l2',      name: 'Seated Calf Raise',         pattern: 'iso_calf', bucket: 'orange', sets: 3, repsLow: 12, repsHigh: 15, rir: 4, last: null },
+      { id: 'cable-crunch-l2',     name: 'Cable Crunch',              pattern: 'iso_core', bucket: 'orange', sets: 3, repsLow: 12, repsHigh: 15, rir: 4, last: null }
+    ]
+  };
+
   // SPEC § 4: UL 4d schedule is Mon Upper A | Tue Lower A | Wed Off | Thu Upper B | Fri Lower B | Sat-Sun Off.
   // JS Date.getDay() returns 0=Sun, 1=Mon, ..., 6=Sat.
   const DAY_NAMES = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
   const UL_4D_BY_DOW = { 1: WORKOUT_UPPER_A, 2: WORKOUT_LOWER_A, 4: WORKOUT_UPPER_B, 5: WORKOUT_LOWER_B };
+  const PPL_6D_BY_DOW = { 1: WORKOUT_PUSH_1, 2: WORKOUT_PULL_1, 3: WORKOUT_LEGS_1, 4: WORKOUT_PUSH_2, 5: WORKOUT_PULL_2, 6: WORKOUT_LEGS_2 };
+  const ORIGINAL_BY_DOW = { 1: WORKOUT_UPPER_1, 2: WORKOUT_LOWER_1, 4: WORKOUT_CHEST_ARMS, 5: WORKOUT_BACK_DELTS, 6: WORKOUT_LOWER_2_HINGE };
 
-  function todaysULWorkout() {
+  // Map split name → its day-of-week table. Used by todaysWorkoutForSplit().
+  const SPLIT_SCHEDULES = {
+    'UL 4d':       UL_4D_BY_DOW,
+    'PPL 6d':      PPL_6D_BY_DOW,
+    'Original 6d': ORIGINAL_BY_DOW
+  };
+
+  // Map split name → ordered list of its workouts (for the picker dropdown).
+  const SPLIT_WORKOUTS = {
+    'UL 4d':       [WORKOUT_UPPER_A, WORKOUT_LOWER_A, WORKOUT_UPPER_B, WORKOUT_LOWER_B],
+    'PPL 6d':      [WORKOUT_PUSH_1, WORKOUT_PULL_1, WORKOUT_LEGS_1, WORKOUT_PUSH_2, WORKOUT_PULL_2, WORKOUT_LEGS_2],
+    'Original 6d': [WORKOUT_UPPER_1, WORKOUT_LOWER_1, WORKOUT_CHEST_ARMS, WORKOUT_BACK_DELTS, WORKOUT_LOWER_2_HINGE]
+  };
+
+  function todaysULWorkout() { return todaysWorkoutForSplit('UL 4d'); }
+
+  function todaysWorkoutForSplit(split) {
+    const schedule = SPLIT_SCHEDULES[split];
     const dow = new Date().getDay();
     const dayName = DAY_NAMES[dow];
-    const w = UL_4D_BY_DOW[dow];
+    const w = schedule && schedule[dow];
     if (w) return Object.assign({}, w, { day: dayName });
     return { day: dayName, workoutName: 'Rest day', exercises: [] };
   }
@@ -1044,13 +1216,23 @@
     } catch (e) { console.warn('[revival] pick save failed', e); }
   }
 
+  // Slug derived from workoutName so picker option values stay in sync with the
+  // workout objects. "Lower 2 (Hinge)" → "lower-2-hinge", etc.
+  function workoutSlug(w) {
+    return (w.workoutName || '').toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '');
+  }
+
   function pickToWorkout(pick) {
-    if (pick === 'upper-a') return Object.assign({}, WORKOUT_UPPER_A, { day: DAY_NAMES[new Date().getDay()] });
-    if (pick === 'lower-a') return Object.assign({}, WORKOUT_LOWER_A, { day: DAY_NAMES[new Date().getDay()] });
-    if (pick === 'upper-b') return Object.assign({}, WORKOUT_UPPER_B, { day: DAY_NAMES[new Date().getDay()] });
-    if (pick === 'lower-b') return Object.assign({}, WORKOUT_LOWER_B, { day: DAY_NAMES[new Date().getDay()] });
-    if (pick === 'rest')    return { day: DAY_NAMES[new Date().getDay()], workoutName: 'Rest day', exercises: [] };
-    return null;
+    const dayName = DAY_NAMES[new Date().getDay()];
+    if (pick === 'rest') return { day: dayName, workoutName: 'Rest day', exercises: [] };
+    const all = []
+      .concat(SPLIT_WORKOUTS['UL 4d'] || [])
+      .concat(SPLIT_WORKOUTS['PPL 6d'] || [])
+      .concat(SPLIT_WORKOUTS['Original 6d'] || []);
+    const found = all.find(w => workoutSlug(w) === pick);
+    return found ? Object.assign({}, found, { day: dayName }) : null;
   }
 
   function trySaveSet(row) {
@@ -1345,10 +1527,10 @@
   }
 
   function workoutForActiveSplit() {
-    if (SETTINGS.activeSplit !== 'UL 4d') return null; // PPL 6d / Original 6d not mocked yet
+    if (!SPLIT_SCHEDULES[SETTINGS.activeSplit]) return null;  // unknown split
     const pick = getTodaysPick();
     const overridden = pick === 'auto' ? null : pickToWorkout(pick);
-    const base = overridden || todaysULWorkout();
+    const base = overridden || todaysWorkoutForSplit(SETTINGS.activeSplit);
     return withSwapOverrides(base);
   }
 
@@ -1367,7 +1549,10 @@
       renderToday(w);
       return;
     }
-    eyebrow.textContent = 'Tuesday · ' + SETTINGS.activeSplit;
+    // Reached only when SETTINGS.activeSplit isn't one of the known schedules.
+    // All three real splits (UL 4d / PPL 6d / Original 6d) are wired; this is
+    // a defensive fallback for a corrupted / unknown split value.
+    eyebrow.textContent = DAY_NAMES[new Date().getDay()] + ' · ' + SETTINGS.activeSplit;
     title.textContent   = 'Block ' + SETTINGS.blockNumber + ' · Week 1';
     counter.innerHTML   = '';
     counter.dataset.zero = 'true';
@@ -1375,10 +1560,9 @@
     body.innerHTML = '';
     const stub = document.createElement('div');
     stub.className = 'split-stub';
-    stub.innerHTML = '<strong>' + SETTINGS.activeSplit + ' workouts not yet wired</strong>' +
-      'Mock data only exists for UL 4d. Switch back in Settings to see Lower A.';
+    stub.innerHTML = '<strong>Unknown split: ' + SETTINGS.activeSplit + '</strong>' +
+      'Pick UL 4d, PPL 6d, or Original 6d in Settings.';
     body.appendChild(stub);
-    // Briefing still renders for non-UL splits (greeting + streak only)
     renderBriefing();
   }
 
@@ -1543,6 +1727,10 @@
       renderWeightView();
     }
     if (key === 'activeSplit' || key === 'blockStartDate' || key === 'blockNumber') {
+      // When the split changes, the picker's option list must change too.
+      if (key === 'activeSplit' && typeof populatePickerOptions === 'function') {
+        populatePickerOptions(value);
+      }
       renderTodayForSplit();
     }
   }
@@ -2067,15 +2255,33 @@
 
   // ---------------------------------------------------------------------------
   // Workout-picker wiring — runs once on boot. Reflects current pick in the
-  // <select>, and re-renders Today when the user changes it.
+  // <select>, populates options based on active split, and re-renders Today
+  // when the user changes the pick.
   // ---------------------------------------------------------------------------
+  function populatePickerOptions(activeSplit) {
+    const sel = document.getElementById('workout-picker-select');
+    if (!sel) return;
+    const prior = sel.value;
+    sel.innerHTML = '';
+    sel.appendChild(new Option("Today's scheduled workout", 'auto'));
+    const list = SPLIT_WORKOUTS[activeSplit] || [];
+    list.forEach(w => sel.appendChild(new Option(w.workoutName, workoutSlug(w))));
+    sel.appendChild(new Option('Rest day', 'rest'));
+    // Restore prior selection if the value is still valid for this split.
+    const valid = Array.from(sel.options).some(o => o.value === prior);
+    sel.value = valid ? prior : 'auto';
+  }
+
   function updatePickerUI() {
     const sel = document.getElementById('workout-picker-select');
     const chip = document.querySelector('.workout-picker');
     if (!sel || !chip) return;
+    populatePickerOptions(SETTINGS.activeSplit);
     const pick = getTodaysPick();
-    sel.value = pick;
-    chip.dataset.override = (pick === 'auto') ? '0' : '1';
+    // Only honor the stored pick if it appears as an option for this split.
+    const valid = Array.from(sel.options).some(o => o.value === pick);
+    sel.value = valid ? pick : 'auto';
+    chip.dataset.override = (sel.value === 'auto') ? '0' : '1';
   }
 
   function wireWorkoutPicker() {
