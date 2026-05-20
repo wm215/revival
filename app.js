@@ -575,7 +575,13 @@
     const iId = exId + '-s' + setNum + '-i';
     const showLabels = setNum === 1;
 
-    function field(labelText, inputId, inputAttrs) {
+    // Prefill from localStorage so switching workouts / reloading doesn't blank
+    // out values Will already typed. Key is today + active workout + exId + N.
+    const activeW = workoutForActiveSplit();
+    const wName = (activeW && activeW.workoutName) || '';
+    const saved = getLocalSet(todayDateStr(), wName, exId, setNum);
+
+    function field(labelText, inputId, inputAttrs, prefill) {
       const children = [];
       if (showLabels) {
         children.push(el('label', { class: 'set-field-label', for: inputId, text: labelText }));
@@ -584,6 +590,9 @@
         { class: 'set-input', id: inputId, type: 'number', placeholder: '—' },
         inputAttrs
       );
+      if (prefill !== null && prefill !== undefined && prefill !== '') {
+        inputProps.value = String(prefill);
+      }
       if (!showLabels) {
         inputProps['aria-label'] = exName + ' set ' + setNum + ' ' + labelText.toLowerCase();
       }
@@ -591,12 +600,12 @@
       return el('div', { class: 'set-field' }, children);
     }
 
-    return el('div', { class: 'set-row', 'data-set': setNum }, [
+    return el('div', { class: 'set-row', 'data-set': setNum, 'data-prefilled': saved ? 'true' : 'false' }, [
       el('div', { class: 'set-label', text: 'Set ' + setNum }),
       el('div', { class: 'set-inputs' }, [
-        field('Weight', wId, { inputmode: 'decimal', step: '2.5' }),
-        field('Reps',   rId, { inputmode: 'numeric', pattern: '[0-9]*', step: '1' }),
-        field('RIR',    iId, { inputmode: 'numeric', pattern: '[0-9]*', step: '1' })
+        field('Weight', wId, { inputmode: 'decimal', step: '2.5' }, saved && saved.weight),
+        field('Reps',   rId, { inputmode: 'numeric', pattern: '[0-9]*', step: '1' }, saved && saved.reps),
+        field('RIR',    iId, { inputmode: 'numeric', pattern: '[0-9]*', step: '1' }, saved && saved.rir)
       ])
     ]);
   }
@@ -899,12 +908,55 @@
 
   // ---------------------------------------------------------------------------
   // Helms progression engine — set-1-based verdict per SPEC § 3 / § 5
+  // setState is in-memory; LOCAL_SETS is the localStorage mirror so values
+  // survive reloads + workout switches. Key = date|workoutName|exId|setN.
   // ---------------------------------------------------------------------------
   const setState = new Map();   // exId -> Map(setNum -> {weight, reps, rir})
+  const LOCAL_SETS_KEY = 'revival.localSets.v1';
+
+  function loadLocalSets() {
+    try {
+      const raw = localStorage.getItem(LOCAL_SETS_KEY);
+      return raw ? JSON.parse(raw) : {};
+    } catch (e) { return {}; }
+  }
+  function persistLocalSets(obj) {
+    try { localStorage.setItem(LOCAL_SETS_KEY, JSON.stringify(obj)); }
+    catch (e) { console.warn('[revival] localSets save failed', e); }
+  }
+  function localSetKey(date, wName, exId, setN) {
+    return date + '|' + (wName || '') + '|' + exId + '|' + setN;
+  }
+  function saveLocalSet(date, wName, exId, setN, values) {
+    const all = loadLocalSets();
+    all[localSetKey(date, wName, exId, setN)] = Object.assign({}, values, { ts: Date.now() });
+    persistLocalSets(all);
+  }
+  function getLocalSet(date, wName, exId, setN) {
+    const all = loadLocalSets();
+    return all[localSetKey(date, wName, exId, setN)] || null;
+  }
 
   function getExSets(exId) {
     if (!setState.has(exId)) setState.set(exId, new Map());
     return setState.get(exId);
+  }
+
+  // Rebuild setState from localStorage scoped to the active workout, so the
+  // Helms verdict engine reflects logged sets after re-render / reload.
+  // Called from renderTodayForSplit before the render runs.
+  function hydrateSetStateForActiveWorkout() {
+    setState.clear();
+    const activeW = workoutForActiveSplit();
+    if (!activeW || !activeW.exercises) return;
+    const today = todayDateStr();
+    const wName = activeW.workoutName;
+    activeW.exercises.forEach(ex => {
+      for (let n = 1; n <= (ex.sets || 0); n++) {
+        const saved = getLocalSet(today, wName, ex.id, n);
+        if (saved) getExSets(ex.id).set(n, saved);
+      }
+    });
   }
 
   function exerciseById(id) {
@@ -1250,11 +1302,18 @@
 
     savedSig.set(sigKey, sigStr);
 
+    // Use the workout currently rendered (could be picker-overridden), not
+    // the day-of-week default. So if Will picks Upper A on a Friday, the
+    // logged row reads "Upper A" — not Friday's "Lower B".
+    const activeW = workoutForActiveSplit();
+    const activeWorkoutName = (activeW && activeW.workoutName) || TODAY_WORKOUT.workoutName;
+    const dateStr = todayDateStr();
+
     const payload = {
       // Append T00:00:00 so Apps Script's `new Date(d.date)` parses as local
       // midnight instead of UTC midnight (which strips back to prior day in ET).
-      date:     todayDateStr() + 'T00:00:00',
-      workout:  TODAY_WORKOUT.workoutName,
+      date:     dateStr + 'T00:00:00',
+      workout:  activeWorkoutName,
       exercise: exName,
       set:      setNum,
       load:     values.weight,
@@ -1267,8 +1326,17 @@
       row.classList.add('is-saved');
       pulseRow(row);
       updateSyncIndicator();
+      // Persist to localStorage so switching workouts / reloading doesn't blank
+      // the row out — renderSetRow reads back from this store.
+      saveLocalSet(dateStr, activeWorkoutName, exId, setNum, values);
+      // Toast only when the row is "complete" (all three fields valid numbers).
+      // Avoids noisy toasts after each individual field blur.
+      if (isFinite(+values.weight) && isFinite(+values.reps) && isFinite(+values.rir)) {
+        showToast('Saved · ' + exName + ' set ' + setNum + ' · ' + values.weight + ' lb × ' + values.reps);
+      }
     }).catch(err => {
       console.error('[revival] queue failed', err);
+      showToast('Set save failed — try again', 'error');
     });
 
     getExSets(exId).set(setNum, values);
@@ -1538,6 +1606,7 @@
 
   function renderTodayForSplit() {
     if (typeof updatePickerUI === 'function') updatePickerUI();
+    hydrateSetStateForActiveWorkout();
     const w = workoutForActiveSplit();
     const eyebrow = document.getElementById('today-eyebrow');
     const title   = document.getElementById('today-title');
