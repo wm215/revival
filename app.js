@@ -400,6 +400,30 @@
     sheetSub:          'Revival_Tracker_v3',
     appsScriptUrl:  'https://script.google.com/macros/s/AKfycbwAYGx4bmY6RCNmhUziETCdqPwYw2mXZQk-zF-1rqYYPoCEJTgdhSh8Hd5rPSbjh5H_/exec'
   };
+
+  // Local persistence layer. The Apps Script Web App doesn't yet have an
+  // update_setting handler, so without this every reload would reset SETTINGS
+  // to the hardcoded defaults above. Hydrate at boot, persist on every change.
+  const SETTINGS_KEY = 'revival.settings.v1';
+
+  function hydrateSettingsFromLocal() {
+    try {
+      const raw = localStorage.getItem(SETTINGS_KEY);
+      if (!raw) return;
+      const saved = JSON.parse(raw);
+      if (!saved || typeof saved !== 'object') return;
+      Object.keys(saved).forEach(k => {
+        if (k in SETTINGS) SETTINGS[k] = saved[k];
+      });
+    } catch (e) { console.warn('[revival] settings hydrate failed', e); }
+  }
+
+  function persistSettings() {
+    try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(SETTINGS)); }
+    catch (e) { console.warn('[revival] settings persist failed', e); }
+  }
+
+  hydrateSettingsFromLocal();
   // Mock streak state (real source TBD — workout completions in last 7 days)
   const STREAK = { done: 4, total: 4 };
 
@@ -1787,6 +1811,7 @@
 
   function saveSetting(key, value) {
     SETTINGS[key] = value;
+    persistSettings();   // localStorage — survives reload even if Apps Script update fails
     queueWrite('update_setting', { key: key, value: value })
       .then(id => { console.log('[revival] queued update_setting #' + id, key, '=', value); updateSyncIndicator(); })
       .catch(err => console.error('[revival] update_setting queue failed', err));
@@ -2110,6 +2135,7 @@
     SETTINGS.blockStartDate = obDraft.blockStartDate          || SETTINGS.blockStartDate;
     SETTINGS.whoopEnabled   = !!obDraft.whoopEnabled;
     SETTINGS.rirFloor       = obDraft.phase === 'full' ? 2 : 4;
+    persistSettings();   // make the onboarding choices survive reload
   }
 
   function finishOnboarding() {
