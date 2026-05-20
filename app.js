@@ -208,7 +208,10 @@
   // Settings — single source of truth. Apps Script will hydrate / persist later.
   // SPEC § 2 defaults (Will edits these in Settings, not here).
   // ---------------------------------------------------------------------------
-  const TODAY_ISO = new Date().toISOString().slice(0, 10);
+  // Local-time YYYY-MM-DD. toISOString() is UTC, which drifts to "tomorrow"
+  // after about 8 PM Eastern. todayDateStr() (defined below, hoisted) returns
+  // YYYY-MM-DD in the user's local timezone.
+  const TODAY_ISO = todayDateStr();
   const SETTINGS = {
     goalWeight:     170,
     goalDate:       '2026-07-01',
@@ -944,7 +947,9 @@
     savedSig.set(sigKey, sigStr);
 
     const payload = {
-      date:     todayDateStr(),
+      // Append T00:00:00 so Apps Script's `new Date(d.date)` parses as local
+      // midnight instead of UTC midnight (which strips back to prior day in ET).
+      date:     todayDateStr() + 'T00:00:00',
       workout:  TODAY_WORKOUT.workoutName,
       exercise: exName,
       set:      setNum,
@@ -1172,7 +1177,9 @@
         input.focus();
         return;
       }
-      const payload = { date: TODAY_ISO, weight: v, source: 'Manual' };
+      // Same T00:00:00 trick as log_set — keeps Apps Script from UTC-shifting
+      // the date back a day in Eastern Time. TODAY_ISO is local-formatted.
+      const payload = { date: TODAY_ISO + 'T00:00:00', weight: v, source: 'Manual' };
       queueWrite('log_weight', payload).then(id => {
         console.log('[revival] queued log_weight #' + id, payload);
         MOCK_WEIGHT_LOG.push({ date: TODAY_ISO, weight: v });
