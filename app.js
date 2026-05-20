@@ -866,19 +866,72 @@
   }
 
   // ---------------------------------------------------------------------------
-  // Daily briefing — Coach voice. Mock context for now (last-session callout
-  // and WHOOP recovery come from real history when wired). Voice rules per
-  // SPEC § 5b: direct, knowledgeable, slightly dry. No cheerleading.
+  // Daily briefing — Coach voice. Real data only: last-session callout from
+  // LOCAL_SETS (set 1 hit top of range with target RIR → bump), streak from
+  // distinct days with any logged set in the last 7. WHOOP recovery line is
+  // hidden until a real WHOOP integration lands; mock numbers were misleading.
+  // Voice rules per SPEC § 5b: direct, knowledgeable, slightly dry.
   // ---------------------------------------------------------------------------
-  const MOCK_LAST_SESSION_CALLOUT = {
-    exercise: 'Hack Squat',
-    verdict: 'green',
-    bumpLbs: 5
-  };
-  const MOCK_WHOOP = {
-    todayRecovery: 67,
-    sevenDayAvg: 72
-  };
+  const EXPECTED_SESSIONS_PER_WEEK = { 'UL 4d': 4, 'PPL 6d': 6, 'Original 6d': 5 };
+
+  // Find the most recent date BEFORE today where Will logged sets, then look
+  // for any exercise where Set 1 hit the top of its rep range at the target
+  // RIR (or better). Returns { exercise, bumpLbs } or null.
+  function getLastSessionCallout() {
+    const all = loadLocalSets();
+    const today = todayDateStr();
+    const byDate = {};
+    Object.keys(all).forEach(k => {
+      const parts = k.split('|');
+      if (parts.length !== 4) return;
+      const [date, workout, exId, setN] = parts;
+      if (date === today) return;
+      if (!byDate[date]) byDate[date] = [];
+      byDate[date].push({ workout: workout, exId: exId, setN: parseInt(setN, 10), values: all[k] });
+    });
+    const dates = Object.keys(byDate).sort().reverse();
+    if (dates.length === 0) return null;
+    const recent = byDate[dates[0]];
+
+    // Match exId back to a workout template so we know top of range + target RIR.
+    const allWorkouts = []
+      .concat(SPLIT_WORKOUTS['UL 4d'] || [])
+      .concat(SPLIT_WORKOUTS['PPL 6d'] || [])
+      .concat(SPLIT_WORKOUTS['Original 6d'] || []);
+    const exTemplate = {};
+    allWorkouts.forEach(w => w.exercises.forEach(ex => { exTemplate[ex.id] = ex; }));
+
+    for (const row of recent) {
+      if (row.setN !== 1) continue;
+      const tpl = exTemplate[row.exId];
+      if (!tpl) continue;
+      const reps = parseFloat(row.values.reps);
+      const rir  = parseFloat(row.values.rir);
+      if (!isFinite(reps) || !isFinite(rir)) continue;
+      // Top of range + at/under target RIR → eligible for bump
+      if (reps >= tpl.repsHigh && rir <= tpl.rir) {
+        return { exercise: tpl.name, bumpLbs: tpl.bucket === 'pink' ? 5 : 2.5 };
+      }
+    }
+    return null;
+  }
+
+  // Distinct dates with any logged set within the last 7 days (including today).
+  function getCurrentStreak() {
+    const all = loadLocalSets();
+    const cutoff = new Date();
+    cutoff.setDate(cutoff.getDate() - 6);
+    const cutoffStr = cutoff.getFullYear() + '-' +
+      String(cutoff.getMonth() + 1).padStart(2, '0') + '-' +
+      String(cutoff.getDate()).padStart(2, '0');
+    const dates = new Set();
+    Object.keys(all).forEach(k => {
+      const date = k.split('|')[0];
+      if (date >= cutoffStr) dates.add(date);
+    });
+    const expected = EXPECTED_SESSIONS_PER_WEEK[SETTINGS.activeSplit] || 4;
+    return { done: dates.size, expected: expected };
+  }
 
   function buildBriefingLines() {
     const lines = [];
@@ -892,29 +945,24 @@
       html: 'Welcome back, <span class="b-emph">' + name + '</span>. ' + wname + ' today.'
     });
 
-    // Last-session callout (only if there's something worth saying)
-    if (MOCK_LAST_SESSION_CALLOUT && MOCK_LAST_SESSION_CALLOUT.verdict === 'green') {
+    // Last-session callout — only when real data shows a bump-eligible lift.
+    const callout = getLastSessionCallout();
+    if (callout) {
       lines.push({
         html: 'Last session you hit top of range on <span class="b-emph">' +
-          MOCK_LAST_SESSION_CALLOUT.exercise + '</span>. Bump ' +
-          MOCK_LAST_SESSION_CALLOUT.bumpLbs + ' lbs.'
+          callout.exercise + '</span>. Bump ' + callout.bumpLbs + ' lbs.'
       });
     }
 
-    // WHOOP — skip entirely if integration off
-    if (SETTINGS.whoopEnabled) {
+    // Streak from real logged sessions.
+    const streak = getCurrentStreak();
+    if (streak.done > 0) {
+      const cap = streak.done >= streak.expected ? ' Lock it in.' : '';
       lines.push({
-        html: '<span class="b-dim">Recovery</span> ' + MOCK_WHOOP.todayRecovery +
-          '%. <span class="b-dim">7-day avg</span> ' + MOCK_WHOOP.sevenDayAvg + '%.'
+        html: '<span class="b-dim">Streak</span> ' + streak.done + ' of ' +
+          streak.expected + ' this week.' + cap
       });
     }
-
-    // Streak
-    const cap = STREAK.done >= STREAK.total ? ' Lock it in.' : '';
-    lines.push({
-      html: '<span class="b-dim">Streak</span> ' + STREAK.done + ' of ' +
-        STREAK.total + ' this week.' + cap
-    });
 
     return lines;
   }
