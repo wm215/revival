@@ -615,6 +615,122 @@
     ]);
   }
 
+  // Historical max load logged for this exercise (set 1, any prior date).
+  // Used to drive the PR badge on the exercise card.
+  function getHistoricalMaxLoad(exId) {
+    const all = loadLocalSets();
+    let max = 0;
+    Object.keys(all).forEach(k => {
+      const parts = k.split('|');
+      if (parts.length !== 4) return;
+      const [, , kExId, setN] = parts;
+      if (kExId !== exId || setN !== '1') return;
+      const w = parseFloat(all[k].weight);
+      if (isFinite(w) && w > max) max = w;
+    });
+    return max;
+  }
+
+  // Today's session stats: total sets logged, total volume (load × reps),
+  // count of exercises where Set 1 hit top-of-range at target RIR.
+  function computeSessionStats() {
+    const all = loadLocalSets();
+    const today = todayDateStr();
+    const activeW = workoutForActiveSplit();
+    const activeName = activeW ? activeW.workoutName : null;
+
+    let sets = 0, volume = 0;
+    const byEx = {};
+    Object.keys(all).forEach(k => {
+      const parts = k.split('|');
+      if (parts.length !== 4) return;
+      const [date, workout, exId, setN] = parts;
+      if (date !== today) return;
+      if (activeName && workout !== activeName) return;
+      const v = all[k];
+      sets++;
+      const w = parseFloat(v.weight);
+      const r = parseFloat(v.reps);
+      if (isFinite(w) && isFinite(r)) volume += w * r;
+      if (!byEx[exId]) byEx[exId] = {};
+      byEx[exId][parseInt(setN, 10)] = v;
+    });
+
+    // Hit-target: set 1 reps >= top of range at target RIR or better.
+    let hit = 0;
+    let total = 0;
+    if (activeW) {
+      activeW.exercises.forEach(ex => {
+        total++;
+        const s1 = byEx[ex.id] && byEx[ex.id][1];
+        if (!s1) return;
+        const reps = parseFloat(s1.reps);
+        const rir  = parseFloat(s1.rir);
+        if (!isFinite(reps) || !isFinite(rir)) return;
+        if (reps >= ex.repsHigh && rir <= ex.rir) hit++;
+      });
+    }
+    return { sets: sets, volume: Math.round(volume), hit: hit, total: total };
+  }
+
+  function renderSessionStats() {
+    const wrap = document.getElementById('session-stats');
+    if (!wrap) return;
+    const s = computeSessionStats();
+    if (s.sets === 0) { wrap.hidden = true; return; }
+    wrap.hidden = false;
+    document.getElementById('stat-sets').textContent   = s.sets;
+    document.getElementById('stat-volume').textContent = s.volume.toLocaleString();
+    document.getElementById('stat-hit').textContent    = s.hit + '/' + s.total;
+  }
+
+  // Mark Workout Done — fires the Apps Script mark_done action and shows
+  // a celebration toast with today's stats. Persists "done today" locally
+  // so the button stays in its "done" state across re-renders.
+  const DONE_KEY = 'revival.workoutDone.';   // suffix with date
+  function isWorkoutDoneToday() {
+    try { return localStorage.getItem(DONE_KEY + todayDateStr()) === '1'; }
+    catch (e) { return false; }
+  }
+  function setWorkoutDoneToday(v) {
+    try {
+      if (v) localStorage.setItem(DONE_KEY + todayDateStr(), '1');
+      else   localStorage.removeItem(DONE_KEY + todayDateStr());
+    } catch (e) {}
+  }
+  function markWorkoutDone() {
+    const s = computeSessionStats();
+    if (s.sets === 0) {
+      showToast('Log a set first', 'error');
+      return;
+    }
+    queueWrite('mark_done', { date: todayDateStr() + 'T00:00:00' })
+      .then(() => {
+        setWorkoutDoneToday(true);
+        renderMarkDoneBtn();
+        showToast('Workout complete · ' + s.sets + ' sets · ' + s.volume.toLocaleString() + ' lb · ' + s.hit + '/' + s.total + ' hit');
+      })
+      .catch(err => {
+        console.error('[revival] mark_done failed', err);
+        showToast('Could not mark done — try again', 'error');
+      });
+  }
+  function renderMarkDoneBtn() {
+    const btn = document.getElementById('mark-done-btn');
+    if (!btn) return;
+    const w = workoutForActiveSplit();
+    // Hide on rest days
+    if (!w || !w.exercises || w.exercises.length === 0) { btn.hidden = true; return; }
+    btn.hidden = false;
+    if (isWorkoutDoneToday()) {
+      btn.dataset.done = 'true';
+      btn.querySelector('.mark-done-label').textContent = 'Done — tap to undo';
+    } else {
+      btn.dataset.done = 'false';
+      btn.querySelector('.mark-done-label').textContent = 'Mark workout done';
+    }
+  }
+
   // Pull the most recent prior session for this exercise from LOCAL_SETS.
   // Returns the same shape as the workout template's ex.last so renderRecap
   // works unchanged. Excludes today so cards still show *prior* numbers as a
@@ -691,7 +807,8 @@
     const article = el('article', {
       class: 'exercise',
       'data-bucket': ex.bucket,
-      'data-id': ex.id
+      'data-id': ex.id,
+      'data-name': ex.name
     });
     article.appendChild(el('div', { class: 'exercise-band', 'aria-hidden': 'true' }));
 
@@ -699,8 +816,23 @@
     const p = effectivePrescription(ex);
     const deload = isDeloadActive();
 
+    // PR badge — today's Set 1 weight beats the historical max for this exId.
+    const liveSet1 = getExSets(ex.id).get(1);
+    const liveLoad = liveSet1 ? parseFloat(liveSet1.weight) : NaN;
+    const histMax = getHistoricalMaxLoad(ex.id);
+    const isPR = isFinite(liveLoad) && liveLoad > 0 && histMax > 0 && liveLoad > histMax;
+    const nameChildren = [document.createTextNode(ex.name)];
+    if (isPR) {
+      const badge = document.createElement('span');
+      badge.className = 'pr-badge';
+      badge.textContent = 'PR';
+      nameChildren.push(badge);
+    }
+    const nameEl = el('h2', { class: 'exercise-name' });
+    nameChildren.forEach(c => nameEl.appendChild(c));
+
     const headerInfo = el('div', { class: 'exercise-info' }, [
-      el('h2', { class: 'exercise-name', text: ex.name }),
+      nameEl,
       el('p', { class: 'exercise-target', text:
         p.sets + ' × ' + p.repsLow + '–' + p.repsHigh + ' · RIR ' + p.rir +
         (deload ? ' · Deload' : '')
@@ -1480,7 +1612,9 @@
     if (!values) return;
 
     const exId    = card.dataset.id;
-    const exName  = card.querySelector('.exercise-name').textContent;
+    // Pull the clean name from data-name (not textContent, which now may
+    // include the PR badge text appended to the .exercise-name node).
+    const exName  = card.dataset.name || card.querySelector('.exercise-name').firstChild.nodeValue || '';
     const setNum  = parseInt(row.dataset.set, 10);
     const sigKey  = exId + ':' + setNum;
     const sigStr  = JSON.stringify(values);
@@ -1515,6 +1649,7 @@
       // Persist to localStorage so switching workouts / reloading doesn't blank
       // the row out — renderSetRow reads back from this store.
       saveLocalSet(dateStr, activeWorkoutName, exId, setNum, values);
+      renderSessionStats();   // live-update sets/volume/hit counter
       // Toast only when the row is "complete" (all three fields valid numbers).
       // Avoids noisy toasts after each individual field blur.
       if (isFinite(+values.weight) && isFinite(+values.reps) && isFinite(+values.rir)) {
@@ -1920,6 +2055,8 @@
     if (typeof updatePickerUI === 'function') updatePickerUI();
     renderWeekViewCard();
     hydrateSetStateForActiveWorkout();
+    renderSessionStats();
+    renderMarkDoneBtn();
     const w = workoutForActiveSplit();
     const eyebrow = document.getElementById('today-eyebrow');
     const title   = document.getElementById('today-title');
@@ -2690,6 +2827,20 @@
   // ---------------------------------------------------------------------------
   wireWorkoutPicker();
   updatePickerUI();
+  // Mark Workout Done button — wire once. Tap toggles done/undone for today.
+  (function wireMarkDone() {
+    const btn = document.getElementById('mark-done-btn');
+    if (!btn) return;
+    btn.addEventListener('click', () => {
+      if (isWorkoutDoneToday()) {
+        setWorkoutDoneToday(false);
+        renderMarkDoneBtn();
+        showToast('Marked not done');
+      } else {
+        markWorkoutDone();
+      }
+    });
+  })();
   renderTodayForSplit();
   renderWeightView();
   wireWeightSave();

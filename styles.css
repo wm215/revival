@@ -1711,3 +1711,100 @@ body:has(.onboarding:not([hidden])) .tabbar { display: none; }
   border-radius: var(--radius-card);
   border: 1px solid var(--card-2);
 }
+
+/* ------------------------------------------------------------------
+   Session stats row — sets / volume / hit-target at the top of Today,
+   updates live as Will fills in cells.
+   ------------------------------------------------------------------ */
+.session-stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin: 8px 0 4px;
+  padding: 12px;
+  background: var(--card);
+  border-radius: var(--radius-card);
+  border: 1px solid var(--card-2);
+}
+.session-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+.session-stat-value {
+  font-size: 20px;
+  font-weight: 700;
+  color: #EAEAEA;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+}
+.session-stat-label {
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #9A9A9A;
+}
+
+/* ------------------------------------------------------------------
+   Mark Workout Done — sticky-feeling CTA at the bottom of Today.
+   ------------------------------------------------------------------ */
+.mark-done-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+  padding: 16px 18px;
+  margin: 20px 0 4px;
+  background: linear-gradient(135deg, #1F3A2A 0%, #2A5A40 100%);
+  color: #B9F0CC;
+  border: 1px solid #2C5A40;
+  border-radius: 14px;
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  cursor: pointer;
+  min-height: 56px;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.35);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+.mark-done-btn:active {
+  transform: translateY(1px);
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.4);
+}
+.mark-done-btn[data-done="true"] {
+  background: linear-gradient(135deg, #2A5A40 0%, #3A8A60 100%);
+  color: white;
+}
+.mark-done-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.12);
+  font-size: 14px;
+  font-weight: 700;
+}
+
+/* ------------------------------------------------------------------
+   PR badge — shown when today's set 1 weight exceeds the historical
+   max for that exercise. Goes next to the exercise name.
+   ------------------------------------------------------------------ */
+.pr-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: 8px;
+  padding: 2px 8px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  background: linear-gradient(135deg, #4D2A60, #7A3E96);
+  color: #F2C8FF;
+  border-radius: 999px;
+  vertical-align: middle;
+}

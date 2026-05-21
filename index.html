@@ -55,11 +55,20 @@
       <section class="week-view-card" id="week-view-card" aria-label="This week's schedule" hidden></section>
       <section class="briefing-card" id="briefing-card" aria-labelledby="briefing-eyebrow"></section>
       <p class="progression-counter" id="progression-counter" aria-live="polite"></p>
+      <div class="session-stats" id="session-stats" hidden>
+        <div class="session-stat"><span class="session-stat-value" id="stat-sets">0</span><span class="session-stat-label">sets</span></div>
+        <div class="session-stat"><span class="session-stat-value" id="stat-volume">0</span><span class="session-stat-label">lb total</span></div>
+        <div class="session-stat"><span class="session-stat-value" id="stat-hit">0/0</span><span class="session-stat-label">hit target</span></div>
+      </div>
       <div class="deload-banner" id="deload-banner" role="status" hidden>
         <span class="deload-banner-title">Week 7 · Deload</span>
         <span class="deload-banner-sub">Cut volume. No grinding. Progression locked.</span>
       </div>
       <div class="view-body" id="today-body"></div>
+      <button id="mark-done-btn" class="mark-done-btn" type="button" hidden>
+        <span class="mark-done-icon" aria-hidden="true">✓</span>
+        <span class="mark-done-label">Mark workout done</span>
+      </button>
     </section>
 
     <section id="view-weight" class="view" data-view="weight" aria-labelledby="weight-title" hidden>
