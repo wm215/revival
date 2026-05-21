@@ -586,16 +586,17 @@
   }
 
   function renderDeloadRecap(ex) {
-    if (!ex.last || ex.last.load === 'BW' || ex.last.load == null) {
+    const last = getLastSessionForExercise(ex.id) || ex.last;
+    if (!last || last.load === 'BW' || last.load == null) {
       return el('div', { class: 'exercise-recap' }, [
         el('span', { class: 'recap-label', text: 'Suggest' }),
         el('span', { class: 'recap-value', text: 'Light load · easy' })
       ]);
     }
-    const target = Math.round(ex.last.load * 0.7);
+    const target = Math.round(last.load * 0.7);
     return el('div', { class: 'exercise-recap' }, [
       el('span', { class: 'recap-label', text: 'Suggest' }),
-      el('span', { class: 'recap-value', text: '~' + target + ' ' + (ex.last.unit || 'lb') + ' (70%)' })
+      el('span', { class: 'recap-value', text: '~' + target + ' ' + (last.unit || 'lb') + ' (70%)' })
     ]);
   }
 
@@ -612,6 +613,37 @@
       el('span', { class: 'recap-label', text: 'Last session' }),
       el('span', { class: 'recap-value', text: loadStr + ' · ' + repsStr + ' reps' })
     ]);
+  }
+
+  // Pull the most recent prior session for this exercise from LOCAL_SETS.
+  // Returns the same shape as the workout template's ex.last so renderRecap
+  // works unchanged. Excludes today so cards still show *prior* numbers as a
+  // reference even after you start logging the current session.
+  function getLastSessionForExercise(exId) {
+    const all = loadLocalSets();
+    const today = todayDateStr();
+    const byDate = {};
+    Object.keys(all).forEach(k => {
+      const parts = k.split('|');
+      if (parts.length !== 4) return;
+      const [date, , kExId, setN] = parts;
+      if (kExId !== exId) return;
+      if (date === today) return;
+      if (!byDate[date]) byDate[date] = {};
+      byDate[date][parseInt(setN, 10)] = all[k];
+    });
+    const dates = Object.keys(byDate).sort().reverse();
+    if (dates.length === 0) return null;
+    const session = byDate[dates[0]];
+    const setNums = Object.keys(session).map(n => parseInt(n, 10)).sort((a, b) => a - b);
+    if (setNums.length === 0) return null;
+    const firstLoad = parseFloat(session[setNums[0]].weight);
+    return {
+      date: dates[0],
+      load: isFinite(firstLoad) ? firstLoad : 0,
+      reps: setNums.map(n => parseInt(session[n].reps, 10) || 0),
+      unit: 'lb'
+    };
   }
 
   function renderSetRow(setNum, exId, exName) {
@@ -688,15 +720,18 @@
 
     const header = el('header', { class: 'exercise-header' }, [headerInfo, swapBtn]);
     body.appendChild(header);
-    body.appendChild(deload ? renderDeloadRecap(ex) : renderRecap(ex.last));
+
+    // Prefer real prior-session data from LOCAL_SETS over the template's
+    // (often null) ex.last. So once Will has logged Hack Squat once, every
+    // future session shows his actual prior numbers as a reference.
+    const effectiveLast = getLastSessionForExercise(ex.id) || ex.last;
+    body.appendChild(deload ? renderDeloadRecap(ex) : renderRecap(effectiveLast));
 
     // Plate calc row — barbell exercises only. Dumbbells are fixed weight;
-    // machines/cables/bodyweight don't load like an Olympic bar. Earlier
-    // versions showed "10 + 5 + 2.5 per side" for DB and machine exercises,
-    // which is nonsense — gating it to actual barbell movements.
-    const initialTarget = deload && ex.last && ex.last.load !== 'BW'
-      ? Math.round(ex.last.load * 0.7)
-      : (ex.last && ex.last.load !== 'BW' ? ex.last.load : null);
+    // machines/cables/bodyweight don't load like an Olympic bar.
+    const initialTarget = deload && effectiveLast && effectiveLast.load !== 'BW'
+      ? Math.round(effectiveLast.load * 0.7)
+      : (effectiveLast && effectiveLast.load !== 'BW' ? effectiveLast.load : null);
     const platesText = (initialTarget != null && isBarbellExercise(ex.name))
       ? formatPlates(initialTarget)
       : null;
