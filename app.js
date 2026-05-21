@@ -486,6 +486,27 @@
   const PLATES_LB = [45, 35, 25, 10, 5, 2.5];
   const BAR_LB    = 45;
 
+  // True only for movements actually loaded on an Olympic barbell. Dumbbells
+  // come fixed weight; machines and cables use stacks/pins; bodyweight is
+  // bodyweight. Drives whether the "X + Y per side" plate hint shows up.
+  function isBarbellExercise(name) {
+    if (!name) return false;
+    const n = name.toLowerCase();
+    // Explicit barbell variants in the catalog/workouts
+    if (n.includes('barbell')) return true;
+    if (n.includes('(bb)') || n.endsWith(' bb')) return true;
+    if (n.includes('ez bar') || n.includes('ez-bar')) return true;
+    if (n.includes('trap bar')) return true;
+    if (n.includes('pendlay row')) return true;
+    if (n.includes('conventional deadlift')) return true;
+    if (n.includes('front squat')) return true;
+    if (n.includes('squat (high bar)')) return true;
+    if (n.includes('flat barbell bench')) return true;
+    // Romanian Deadlift — barbell only if NOT marked DB
+    if (n.includes('romanian deadlift') && !n.includes('db') && !n.includes('(db)') && !n.includes('dumbbell')) return true;
+    return false;
+  }
+
   function calcPlates(target, bar) {
     if (target == null || target === 'BW') return null;
     const t = parseFloat(target);
@@ -669,11 +690,16 @@
     body.appendChild(header);
     body.appendChild(deload ? renderDeloadRecap(ex) : renderRecap(ex.last));
 
-    // Plate calc row — initial target = last load (deload uses 70% as suggested)
+    // Plate calc row — barbell exercises only. Dumbbells are fixed weight;
+    // machines/cables/bodyweight don't load like an Olympic bar. Earlier
+    // versions showed "10 + 5 + 2.5 per side" for DB and machine exercises,
+    // which is nonsense — gating it to actual barbell movements.
     const initialTarget = deload && ex.last && ex.last.load !== 'BW'
       ? Math.round(ex.last.load * 0.7)
       : (ex.last && ex.last.load !== 'BW' ? ex.last.load : null);
-    const platesText = initialTarget != null ? formatPlates(initialTarget) : null;
+    const platesText = (initialTarget != null && isBarbellExercise(ex.name))
+      ? formatPlates(initialTarget)
+      : null;
     if (platesText) {
       body.appendChild(el('div', { class: 'exercise-plates' }, [
         el('span', { class: 'plates-label', text: 'Plates' }),
@@ -916,6 +942,48 @@
     return null;
   }
 
+  // "X of Y exercises hit target on the most recent prior day." Uses set 1
+  // values + the exercise template to check top-of-range + RIR criteria.
+  function getLastSessionSummary() {
+    const all = loadLocalSets();
+    const today = todayDateStr();
+    const byDate = {};
+    Object.keys(all).forEach(k => {
+      const parts = k.split('|');
+      if (parts.length !== 4) return;
+      const [date, workout, exId, setN] = parts;
+      if (date === today) return;
+      if (!byDate[date]) byDate[date] = {};
+      const ekey = workout + '|' + exId;
+      if (!byDate[date][ekey]) byDate[date][ekey] = {};
+      byDate[date][ekey][parseInt(setN, 10)] = all[k];
+    });
+    const dates = Object.keys(byDate).sort().reverse();
+    if (dates.length === 0) return null;
+    const session = byDate[dates[0]];
+
+    const allWorkouts = []
+      .concat(SPLIT_WORKOUTS['UL 4d'] || [])
+      .concat(SPLIT_WORKOUTS['PPL 6d'] || [])
+      .concat(SPLIT_WORKOUTS['Original 6d'] || []);
+    const exTemplate = {};
+    allWorkouts.forEach(w => w.exercises.forEach(ex => { exTemplate[ex.id] = ex; }));
+
+    let total = 0, hit = 0;
+    Object.keys(session).forEach(ekey => {
+      const exId = ekey.split('|')[1];
+      const tpl = exTemplate[exId];
+      const s1 = session[ekey][1];
+      if (!tpl || !s1) return;
+      total++;
+      const reps = parseFloat(s1.reps);
+      const rir  = parseFloat(s1.rir);
+      if (!isFinite(reps) || !isFinite(rir)) return;
+      if (reps >= tpl.repsHigh && rir <= tpl.rir) hit++;
+    });
+    return { hit: hit, total: total };
+  }
+
   // Distinct dates with any logged set within the last 7 days (including today).
   function getCurrentStreak() {
     const all = loadLocalSets();
@@ -951,6 +1019,16 @@
       lines.push({
         html: 'Last session you hit top of range on <span class="b-emph">' +
           callout.exercise + '</span>. Bump ' + callout.bumpLbs + ' lbs.'
+      });
+    }
+
+    // "X of Y exercises hit target last session" — broader summary so the
+    // briefing reflects the whole session, not just a single highlighted lift.
+    const summary = getLastSessionSummary();
+    if (summary && summary.total > 0) {
+      lines.push({
+        html: '<span class="b-dim">Last session</span> ' + summary.hit + ' of ' +
+          summary.total + ' exercises hit target.'
       });
     }
 
@@ -1049,12 +1127,13 @@
     if (!set1) return { kind: 'pending', text: 'Verdict pending' };
 
     if (set1.reps < p.repsLow) {
-      return { kind: 'amber', text: 'BELOW RANGE · Logged' };
+      // Red — visually screams "missed" per Will's request (was amber).
+      return { kind: 'red', text: 'Under target — try lighter or reset form' };
     }
     if (set1.reps >= p.repsHigh && set1.rir <= p.rir) {
-      return { kind: 'green', text: 'TOP HIT · Bump 2.5–5 lbs next session' };
+      return { kind: 'green', text: 'Hit the target — bump 2.5–5 lbs next session' };
     }
-    return { kind: 'blue', text: 'PUSH REPS · Hold this load' };
+    return { kind: 'blue', text: 'Same load — push reps next session' };
   }
 
   function renderVerdict(card, ex) {
@@ -1498,7 +1577,13 @@
 
   function renderWeightView() {
     renderWeightHistory();   // localStorage-backed list of recent entries
-    const log = MOCK_WEIGHT_LOG.slice();
+
+    // Prefer real local history over mock. Falls back to mock only if local
+    // store is empty (first launch). Sorted oldest → newest for chart/pace.
+    const realHistory = loadWeightHistory().slice().sort((a, b) => {
+      return (a.date < b.date) ? -1 : (a.date > b.date ? 1 : 0);
+    });
+    const log = realHistory.length > 0 ? realHistory : MOCK_WEIGHT_LOG.slice();
     const latest = log[log.length - 1];
     const previous = log.length > 1 ? log[log.length - 2] : null;
 
@@ -1676,8 +1761,129 @@
 
   function getActiveWorkout() { return workoutForActiveSplit() || null; }
 
+  // ---------------------------------------------------------------------------
+  // Week-View card — renders Mon-Sun chips below the Today title, showing
+  // each day's workout for the active split with today highlighted. ✓ mark
+  // appears for any day Will already logged sets on.
+  // ---------------------------------------------------------------------------
+  function renderWeekViewCard() {
+    const card = document.getElementById('week-view-card');
+    if (!card) return;
+    const schedule = SPLIT_SCHEDULES[SETTINGS.activeSplit];
+    if (!schedule) { card.hidden = true; return; }
+    card.hidden = false;
+    card.innerHTML = '';
+
+    const now = new Date();
+    const todayDow = now.getDay();
+    const todayIso = todayDateStr();
+
+    // Find dates with at least one logged set this week to mark with a ✓.
+    const all = loadLocalSets();
+    const datesWithSets = new Set();
+    Object.keys(all).forEach(k => {
+      const d = k.split('|')[0];
+      if (d) datesWithSets.add(d);
+    });
+
+    // ISO 8601 week: Monday-first. Build Mon..Sun chips relative to today.
+    const order = [1, 2, 3, 4, 5, 6, 0]; // Mon..Sun (JS Date.getDay() values)
+    order.forEach(dow => {
+      const w = schedule[dow];
+      const name = (w && w.workoutName) || 'Rest';
+      const isToday = dow === todayDow;
+
+      // Compute the date for this dow in the current week to check logged ✓.
+      const offset = (dow === 0 ? 7 : dow) - (todayDow === 0 ? 7 : todayDow);
+      const d = new Date(now);
+      d.setDate(d.getDate() + offset);
+      const iso = d.getFullYear() + '-' +
+        String(d.getMonth() + 1).padStart(2, '0') + '-' +
+        String(d.getDate()).padStart(2, '0');
+      const logged = datesWithSets.has(iso);
+
+      const chip = el('div', {
+        class: 'week-day',
+        'data-today': isToday ? 'true' : 'false',
+        'data-rest': w ? 'false' : 'true',
+        'data-logged': logged ? 'true' : 'false'
+      }, [
+        el('span', { class: 'week-day-name', text: ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][dow] }),
+        el('span', { class: 'week-day-workout', text: name.replace(/ \(.*$/, '') })
+      ]);
+      card.appendChild(chip);
+    });
+  }
+
+  // ---------------------------------------------------------------------------
+  // History view — flat vertical list of past sessions. Source: LOCAL_SETS in
+  // localStorage. Groups by date, then by workout name, then by exercise.
+  // Each exercise row shows "weight×reps" tuples for sets 1..N.
+  // ---------------------------------------------------------------------------
+  function renderHistoryView() {
+    const body = document.getElementById('history-body');
+    if (!body) return;
+    body.innerHTML = '';
+
+    const all = loadLocalSets();
+    const keys = Object.keys(all);
+    if (keys.length === 0) {
+      const empty = el('div', { class: 'history-empty',
+        text: 'No sessions logged yet. Log a set on the Today tab and it’ll show up here.' });
+      body.appendChild(empty);
+      return;
+    }
+
+    // Group: date → workoutName → exId → [{setN, values}]
+    const grouped = {};
+    keys.forEach(k => {
+      const parts = k.split('|');
+      if (parts.length !== 4) return;
+      const [date, workout, exId, setN] = parts;
+      if (!grouped[date]) grouped[date] = {};
+      if (!grouped[date][workout]) grouped[date][workout] = {};
+      if (!grouped[date][workout][exId]) grouped[date][workout][exId] = [];
+      grouped[date][workout][exId].push({ setN: parseInt(setN, 10), values: all[k] });
+    });
+
+    // Resolve exId → display name via SPLIT_WORKOUTS
+    const exNameById = {};
+    Object.keys(SPLIT_WORKOUTS).forEach(split => {
+      SPLIT_WORKOUTS[split].forEach(w => {
+        w.exercises.forEach(ex => { exNameById[ex.id] = ex.name; });
+      });
+    });
+
+    // Render newest date first
+    Object.keys(grouped).sort().reverse().forEach(date => {
+      const dayWorkouts = grouped[date];
+      Object.keys(dayWorkouts).forEach(workout => {
+        const dayCard = el('div', { class: 'history-day' });
+        dayCard.appendChild(el('div', { class: 'history-day-header' }, [
+          el('span', { class: 'history-day-date', text: formatHistoryDate(date) }),
+          el('span', { class: 'history-day-workout', text: workout || '' })
+        ]));
+        Object.keys(dayWorkouts[workout]).forEach(exId => {
+          const sets = dayWorkouts[workout][exId].sort((a, b) => a.setN - b.setN);
+          const summary = sets.map(s => {
+            const v = s.values || {};
+            const w = (v.weight === '' || v.weight == null) ? '0' : v.weight;
+            const r = (v.reps   === '' || v.reps   == null) ? '?' : v.reps;
+            return w + '×' + r;
+          }).join(' · ');
+          dayCard.appendChild(el('div', { class: 'history-exercise' }, [
+            el('div', { class: 'history-ex-name', text: exNameById[exId] || exId }),
+            el('div', { class: 'history-sets',    text: summary })
+          ]));
+        });
+        body.appendChild(dayCard);
+      });
+    });
+  }
+
   function renderTodayForSplit() {
     if (typeof updatePickerUI === 'function') updatePickerUI();
+    renderWeekViewCard();
     hydrateSetStateForActiveWorkout();
     const w = workoutForActiveSplit();
     const eyebrow = document.getElementById('today-eyebrow');
@@ -2392,6 +2598,10 @@
       t.classList.toggle('is-active', match);
       t.setAttribute('aria-selected', match ? 'true' : 'false');
     });
+    // Re-render history when navigating in — its source data may have changed.
+    if (target === 'history' && typeof renderHistoryView === 'function') {
+      renderHistoryView();
+    }
   }
 
   tabs.forEach(t => t.addEventListener('click', () => show(t.dataset.target)));

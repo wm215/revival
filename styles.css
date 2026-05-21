@@ -1308,7 +1308,8 @@ body:has(.onboarding:not([hidden])) .tabbar { display: none; }
 }
 .verdict-slot[data-verdict="green"],
 .verdict-slot[data-verdict="blue"],
-.verdict-slot[data-verdict="amber"] {
+.verdict-slot[data-verdict="amber"],
+.verdict-slot[data-verdict="red"] {
   margin-top: 4px;
   padding: 10px 12px;
   border-radius: 10px;
@@ -1328,6 +1329,10 @@ body:has(.onboarding:not([hidden])) .tabbar { display: none; }
 .verdict-slot[data-verdict="amber"] {
   background: rgba(255, 159, 10, 0.18);
   color: var(--warning);
+}
+.verdict-slot[data-verdict="red"] {
+  background: rgba(255, 69, 58, 0.20);
+  color: #FF8A85;
 }
 
 /* Daily briefing card — Coach voice, top of Today (above counter, above cards) */
@@ -1422,7 +1427,7 @@ body:has(.onboarding:not([hidden])) .tabbar { display: none; }
   right: 0;
   bottom: 0;
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(4, 1fr);
   gap: 0;
   height: calc(var(--tabbar-h) + env(safe-area-inset-bottom, 0));
   padding-bottom: env(safe-area-inset-bottom, 0);
@@ -1592,4 +1597,117 @@ body:has(.onboarding:not([hidden])) .tabbar { display: none; }
   background: #3A1A1A;
   color: #FFB4B4;
   border-color: #5A2C2C;
+}
+
+/* ------------------------------------------------------------------
+   Week-View card — Mon-Sun chips on the Today screen showing the
+   active split's schedule, with today highlighted.
+   ------------------------------------------------------------------ */
+.week-view-card {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 6px;
+  margin: 8px 0 0 0;
+  padding: 12px 10px;
+  background: var(--card);
+  border-radius: var(--radius-card);
+  border: 1px solid var(--card-2);
+}
+.week-day {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 4px;
+  border-radius: 8px;
+  background: transparent;
+  text-align: center;
+  min-height: 56px;
+}
+.week-day[data-today="true"] {
+  background: rgba(10, 132, 255, 0.18);
+  border: 1px solid var(--accent-blue);
+}
+.week-day-name {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #9A9A9A;
+}
+.week-day[data-today="true"] .week-day-name { color: var(--accent-blue-text); }
+.week-day-workout {
+  font-size: 11px;
+  font-weight: 600;
+  color: #EAEAEA;
+  line-height: 1.15;
+}
+.week-day[data-rest="true"] .week-day-workout {
+  color: #6A6A6A;
+  font-weight: 400;
+}
+.week-day[data-logged="true"]::after {
+  content: '✓';
+  font-size: 10px;
+  color: var(--success, #4FD46A);
+  font-weight: 700;
+}
+
+/* ------------------------------------------------------------------
+   History view — vertical list of past sessions sourced from
+   LOCAL_SETS in localStorage. Groups by date, then by workout, then
+   exercise rows.
+   ------------------------------------------------------------------ */
+.history-day {
+  background: var(--card);
+  border-radius: var(--radius-card);
+  border: 1px solid var(--card-2);
+  padding: 14px 14px 10px;
+  margin-bottom: 12px;
+}
+.history-day-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--card-2);
+}
+.history-day-date {
+  font-size: 17px;
+  font-weight: 700;
+  color: #EAEAEA;
+}
+.history-day-workout {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--accent-blue-text);
+  letter-spacing: 0.02em;
+}
+.history-exercise {
+  padding: 8px 0;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+}
+.history-exercise:last-child { border-bottom: 0; }
+.history-ex-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: #EAEAEA;
+  margin-bottom: 4px;
+}
+.history-sets {
+  font-size: 13px;
+  color: #9A9A9A;
+  font-variant-numeric: tabular-nums;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+.history-empty {
+  color: #9A9A9A;
+  font-size: 14px;
+  padding: 24px;
+  text-align: center;
+  background: var(--card);
+  border-radius: var(--radius-card);
+  border: 1px solid var(--card-2);
 }

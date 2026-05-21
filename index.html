@@ -52,6 +52,7 @@
           </svg>
         </label>
       </header>
+      <section class="week-view-card" id="week-view-card" aria-label="This week's schedule" hidden></section>
       <section class="briefing-card" id="briefing-card" aria-labelledby="briefing-eyebrow"></section>
       <p class="progression-counter" id="progression-counter" aria-live="polite"></p>
       <div class="deload-banner" id="deload-banner" role="status" hidden>
@@ -139,6 +140,14 @@
       </div>
     </section>
 
+    <section id="view-history" class="view" data-view="history" aria-labelledby="history-title" hidden>
+      <header class="view-header">
+        <p class="eyebrow" id="history-eyebrow">Recent sessions</p>
+        <h1 id="history-title">History</h1>
+      </header>
+      <div class="view-body" id="history-body"></div>
+    </section>
+
     <section id="view-settings" class="view" data-view="settings" aria-labelledby="settings-title" hidden>
       <header class="view-header">
         <p class="eyebrow">Configuration</p>
@@ -191,6 +200,13 @@
         <path d="M14 9h6v6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
       </svg>
       <span class="tab-label">Weight</span>
+    </button>
+    <button class="tab" type="button" role="tab" aria-selected="false" aria-controls="view-history" data-target="history">
+      <svg class="tab-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+        <circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.6"/>
+        <path d="M12 7v5l3 2" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      <span class="tab-label">History</span>
     </button>
     <button class="tab" type="button" role="tab" aria-selected="false" aria-controls="view-settings" data-target="settings">
       <svg class="tab-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
