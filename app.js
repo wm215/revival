@@ -632,21 +632,21 @@
   }
 
   // Today's session stats: total sets logged, total volume (load × reps),
-  // count of exercises where Set 1 hit top-of-range at target RIR.
+  // count of exercises where every set hit top-of-range at target RIR
+  // (all-sets progression rule). Counts ALL sets logged today across any
+  // workout switches — previously was scoped to active workout, which
+  // undercounted when Will switched splits mid-session.
   function computeSessionStats() {
     const all = loadLocalSets();
     const today = todayDateStr();
-    const activeW = workoutForActiveSplit();
-    const activeName = activeW ? activeW.workoutName : null;
 
     let sets = 0, volume = 0;
     const byEx = {};
     Object.keys(all).forEach(k => {
       const parts = k.split('|');
       if (parts.length !== 4) return;
-      const [date, workout, exId, setN] = parts;
+      const [date, , exId, setN] = parts;
       if (date !== today) return;
-      if (activeName && workout !== activeName) return;
       const v = all[k];
       sets++;
       const w = parseFloat(v.weight);
@@ -656,20 +656,34 @@
       byEx[exId][parseInt(setN, 10)] = v;
     });
 
-    // Hit-target: set 1 reps >= top of range at target RIR or better.
+    // Hit-target uses the all-sets rule: every set must hit top of range at
+    // target RIR. Looks across ALL exercises Will logged today (not just the
+    // active workout) so the count doesn't undercount when he switches splits
+    // or workouts mid-session.
+    const allWorkouts = []
+      .concat(SPLIT_WORKOUTS['UL 4d'] || [])
+      .concat(SPLIT_WORKOUTS['PPL 6d'] || [])
+      .concat(SPLIT_WORKOUTS['Original 6d'] || []);
+    const exTemplate = {};
+    allWorkouts.forEach(w => w.exercises.forEach(ex => { exTemplate[ex.id] = ex; }));
+
     let hit = 0;
-    let total = 0;
-    if (activeW) {
-      activeW.exercises.forEach(ex => {
-        total++;
-        const s1 = byEx[ex.id] && byEx[ex.id][1];
-        if (!s1) return;
-        const reps = parseFloat(s1.reps);
-        const rir  = parseFloat(s1.rir);
-        if (!isFinite(reps) || !isFinite(rir)) return;
-        if (reps >= ex.repsHigh && rir <= ex.rir) hit++;
-      });
-    }
+    const total = Object.keys(byEx).length;
+    Object.keys(byEx).forEach(exId => {
+      const tpl = exTemplate[exId];
+      if (!tpl) return;
+      let allTop = true;
+      for (let i = 1; i <= tpl.sets; i++) {
+        const s = byEx[exId][i];
+        if (!s) { allTop = false; break; }
+        const reps = parseFloat(s.reps);
+        const rir  = parseFloat(s.rir);
+        const wgt  = parseFloat(s.weight);
+        if (!isFinite(reps) || !isFinite(rir) || !isFinite(wgt) || wgt <= 0) { allTop = false; break; }
+        if (reps < tpl.repsHigh || rir > tpl.rir) { allTop = false; break; }
+      }
+      if (allTop) hit++;
+    });
     return { sets: sets, volume: Math.round(volume), hit: hit, total: total };
   }
 
@@ -1094,17 +1108,26 @@
     const exTemplate = {};
     allWorkouts.forEach(w => w.exercises.forEach(ex => { exTemplate[ex.id] = ex; }));
 
-    for (const row of recent) {
-      if (row.setN !== 1) continue;
-      const tpl = exTemplate[row.exId];
+    // All-sets rule: bump-eligible only when every set hit top + target RIR.
+    const byEx = {};
+    recent.forEach(row => {
+      if (!byEx[row.exId]) byEx[row.exId] = {};
+      byEx[row.exId][row.setN] = row.values;
+    });
+    for (const exId of Object.keys(byEx)) {
+      const tpl = exTemplate[exId];
       if (!tpl) continue;
-      const reps = parseFloat(row.values.reps);
-      const rir  = parseFloat(row.values.rir);
-      if (!isFinite(reps) || !isFinite(rir)) continue;
-      // Top of range + at/under target RIR → eligible for bump
-      if (reps >= tpl.repsHigh && rir <= tpl.rir) {
-        return { exercise: tpl.name, bumpLbs: tpl.bucket === 'pink' ? 5 : 2.5 };
+      let allTop = true;
+      for (let i = 1; i <= tpl.sets; i++) {
+        const s = byEx[exId][i];
+        if (!s) { allTop = false; break; }
+        const reps = parseFloat(s.reps);
+        const rir  = parseFloat(s.rir);
+        const wgt  = parseFloat(s.weight);
+        if (!isFinite(reps) || !isFinite(rir) || !isFinite(wgt) || wgt <= 0) { allTop = false; break; }
+        if (reps < tpl.repsHigh || rir > tpl.rir) { allTop = false; break; }
       }
+      if (allTop) return { exercise: tpl.name, bumpLbs: tpl.bucket === 'pink' ? 5 : 2.5 };
     }
     return null;
   }
@@ -1136,17 +1159,24 @@
     const exTemplate = {};
     allWorkouts.forEach(w => w.exercises.forEach(ex => { exTemplate[ex.id] = ex; }));
 
+    // All-sets rule applied to the last-session summary as well.
     let total = 0, hit = 0;
     Object.keys(session).forEach(ekey => {
       const exId = ekey.split('|')[1];
       const tpl = exTemplate[exId];
-      const s1 = session[ekey][1];
-      if (!tpl || !s1) return;
+      if (!tpl) return;
       total++;
-      const reps = parseFloat(s1.reps);
-      const rir  = parseFloat(s1.rir);
-      if (!isFinite(reps) || !isFinite(rir)) return;
-      if (reps >= tpl.repsHigh && rir <= tpl.rir) hit++;
+      let allTop = true;
+      for (let i = 1; i <= tpl.sets; i++) {
+        const s = session[ekey][i];
+        if (!s) { allTop = false; break; }
+        const reps = parseFloat(s.reps);
+        const rir  = parseFloat(s.rir);
+        const wgt  = parseFloat(s.weight);
+        if (!isFinite(reps) || !isFinite(rir) || !isFinite(wgt) || wgt <= 0) { allTop = false; break; }
+        if (reps < tpl.repsHigh || rir > tpl.rir) { allTop = false; break; }
+      }
+      if (allTop) hit++;
     });
     return { hit: hit, total: total };
   }
@@ -1293,14 +1323,34 @@
     const set1 = sets.get(1);
     if (!set1) return { kind: 'pending', text: 'Verdict pending' };
 
-    if (set1.reps < p.repsLow) {
-      // Red — visually screams "missed" per Will's request (was amber).
+    // ALL-SETS progression rule (Will's preferred interpretation as of
+    // 2026-05-22): you only bump load when EVERY set hits the top of the
+    // rep range at target RIR or better. If any set is below the bottom of
+    // the range, that's red ("under target"). Otherwise blue ("push reps").
+    // Weight must be non-zero for a green — Face Pull 0 lb shouldn't count.
+    let allTop = true;
+    let anyBelow = false;
+    let anyZero = false;
+    for (let i = 1; i <= p.sets; i++) {
+      const s = sets.get(i);
+      const reps = s ? parseFloat(s.reps)  : NaN;
+      const rir  = s ? parseFloat(s.rir)   : NaN;
+      const wgt  = s ? parseFloat(s.weight) : NaN;
+      if (!s || !isFinite(reps) || !isFinite(rir)) { allTop = false; continue; }
+      if (!isFinite(wgt) || wgt <= 0) anyZero = true;
+      if (reps < p.repsLow) anyBelow = true;
+      if (reps < p.repsHigh || rir > p.rir) allTop = false;
+    }
+    if (anyBelow) {
       return { kind: 'red', text: 'Under target — try lighter or reset form' };
     }
-    if (set1.reps >= p.repsHigh && set1.rir <= p.rir) {
-      return { kind: 'green', text: 'Hit the target — bump 2.5–5 lbs next session' };
+    if (allTop && !anyZero) {
+      return { kind: 'green', text: 'All sets hit top — bump 2.5–5 lbs next session' };
     }
-    return { kind: 'blue', text: 'Same load — push reps next session' };
+    if (allTop && anyZero) {
+      return { kind: 'pending', text: 'Add a weight to confirm' };
+    }
+    return { kind: 'blue', text: 'Same load — push reps until all sets hit top' };
   }
 
   function renderVerdict(card, ex) {
@@ -1972,15 +2022,25 @@
         String(d.getDate()).padStart(2, '0');
       const logged = datesWithSets.has(iso);
 
-      const chip = el('div', {
+      const chip = el('button', {
         class: 'week-day',
+        type: 'button',
         'data-today': isToday ? 'true' : 'false',
         'data-rest': w ? 'false' : 'true',
-        'data-logged': logged ? 'true' : 'false'
+        'data-logged': logged ? 'true' : 'false',
+        'aria-label': name + ' on ' + ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'][dow]
       }, [
         el('span', { class: 'week-day-name', text: ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][dow] }),
         el('span', { class: 'week-day-workout', text: name.replace(/ \(.*$/, '') })
       ]);
+      // Tap → set picker to that day's workout (or rest) and re-render Today
+      chip.addEventListener('click', () => {
+        const slug = w ? workoutSlug(w) : 'rest';
+        setTodaysPick(slug);
+        renderTodayForSplit();
+        const labelName = w ? w.workoutName : 'Rest day';
+        showToast('Viewing ' + labelName);
+      });
       card.appendChild(chip);
     });
   }

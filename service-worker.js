@@ -1,6 +1,6 @@
 /* Revival service worker — bump CACHE_VERSION on every deploy. */
 
-const CACHE_VERSION = 'revival-v13';
+const CACHE_VERSION = 'revival-v14';
 const CACHE_PREFIX  = 'revival-';
 
 // App shell — the minimum needed to render offline

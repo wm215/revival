@@ -1617,12 +1617,26 @@ body:has(.onboarding:not([hidden])) .tabbar { display: none; }
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: center;
   gap: 4px;
   padding: 8px 4px;
   border-radius: 8px;
   background: transparent;
+  border: 1px solid transparent;
   text-align: center;
   min-height: 56px;
+  cursor: pointer;
+  color: inherit;
+  font: inherit;
+  transition: background 0.12s ease, transform 0.08s ease;
+}
+.week-day:active {
+  transform: scale(0.96);
+  background: rgba(255, 255, 255, 0.04);
+}
+.week-day:focus-visible {
+  outline: 2px solid var(--accent-blue);
+  outline-offset: 2px;
 }
 .week-day[data-today="true"] {
   background: rgba(10, 132, 255, 0.18);
